@@ -6,36 +6,46 @@ type FieldClimateBadgeProps = {
   snapshot: ClimateSnapshot | undefined
 }
 
-const areaFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
-
-function formatValue(value: number | null | undefined, format: (value: number) => string): string {
-  return value === null || value === undefined ? '…' : format(value)
+type Stat = {
+  label: string
+  value: number | null | undefined
+  unit: string
+  format: (value: number) => string
 }
 
+const areaFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
+
 export function FieldClimateBadge({ name, areaHectares, snapshot }: FieldClimateBadgeProps) {
-  const stats = [
-    { label: 'Temp', value: formatValue(snapshot?.temperature, (value) => `${value.toFixed(1)}°`) },
-    { label: 'Rain 7d', value: formatValue(snapshot?.weeklyPrecipitation, (value) => `${value.toFixed(0)} mm`) },
-    { label: 'Soil', value: formatValue(snapshot?.soilWetness, (value) => `${Math.round(value * 100)}%`) },
+  const stats: Stat[] = [
+    { label: 'Air', value: snapshot?.temperature, unit: '°C', format: (value) => value.toFixed(1) },
+    { label: 'Rain, 7 days', value: snapshot?.weeklyPrecipitation, unit: 'mm', format: (value) => value.toFixed(0) },
+    {
+      label: 'Soil moisture',
+      value: snapshot?.soilWetness,
+      unit: '%',
+      format: (value) => String(Math.round(value * 100)),
+    },
   ]
 
   return (
-    <div className="min-w-40 text-xs/5">
+    <div className="w-72">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="truncate font-semibold text-zinc-950 dark:text-white">{name}</span>
-        <span className="shrink-0 text-zinc-500 tabular-nums dark:text-zinc-400">
+        <span className="truncate text-base/6 font-semibold text-zinc-950 dark:text-white">{name}</span>
+        <span className="shrink-0 text-sm/6 text-zinc-500 tabular-nums dark:text-zinc-400">
           {areaFormatter.format(areaHectares)} ha
         </span>
       </div>
-      <dl className="mt-1 grid grid-cols-3 gap-2 border-t border-zinc-950/5 pt-1 dark:border-white/10">
-        {stats.map(({ label, value }) => (
-          <div key={label}>
-            <dt className="text-[10px]/4 text-zinc-500 dark:text-zinc-400">{label}</dt>
-            <dd className="font-medium text-zinc-950 tabular-nums dark:text-white">{value}</dd>
+      <dl className="mt-3 grid grid-cols-3 gap-3">
+        {stats.map(({ label, value, unit, format }) => (
+          <div key={label} className="flex min-w-0 flex-col-reverse">
+            <dt className="truncate text-xs/5 text-zinc-500 dark:text-zinc-400">{label}</dt>
+            <dd className="flex items-baseline gap-0.5 text-zinc-950 tabular-nums dark:text-white">
+              <span className="text-2xl/8 font-semibold">{value == null ? '–' : format(value)}</span>
+              <span className="text-sm/6 text-zinc-500 dark:text-zinc-400">{unit}</span>
+            </dd>
           </div>
         ))}
       </dl>
-      {snapshot && <p className="mt-1 text-[10px]/4 text-zinc-400">NASA POWER · {snapshot.date}</p>}
     </div>
   )
 }

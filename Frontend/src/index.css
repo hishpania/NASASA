@@ -9,10 +9,10 @@
 }
 
 .leaflet-tooltip.field-label {
-  padding: 6px 8px;
+  padding: 14px 16px;
   border: none;
-  border-radius: 8px;
-  background: rgb(255 255 255 / 0.92);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.95);
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.18);
   backdrop-filter: blur(4px);
 }
