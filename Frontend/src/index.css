@@ -8,6 +8,25 @@
   font-family: var(--font-sans);
 }
 
+.leaflet-tooltip.field-label {
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.92);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.18);
+  backdrop-filter: blur(4px);
+}
+
+.leaflet-tooltip.field-label::before {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .leaflet-tooltip.field-label {
+    background: rgb(24 24 27 / 0.92);
+  }
+}
+
 .leaflet-div-icon.shape-handle {
   background: transparent;
   border: none;

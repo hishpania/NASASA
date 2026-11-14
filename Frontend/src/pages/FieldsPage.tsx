@@ -2,6 +2,7 @@ import { Divider } from '@/components/catalyst/divider'
 import { Heading, Subheading } from '@/components/catalyst/heading'
 import { Text } from '@/components/catalyst/text'
 import { BASE_LAYERS, type BaseLayerId } from '@/config/map'
+import { FieldClimateBadge, useClimateSnapshots } from '@/features/climate'
 import {
   DraftActions,
   GeolocationNotice,
@@ -19,6 +20,7 @@ import {
   useReverseGeocode,
   useFieldWorkspace,
   type Bounds,
+  type Field,
   type LatLng,
   type MapFocus,
   type Place,
@@ -64,6 +66,18 @@ export function FieldsPage() {
       focusOn(entry.shape.center, entry.shape.bounds)
     }
   }
+
+  const climatePoints = useMemo(
+    () => collection.entries.map(({ id, shape }) => ({ id, point: shape.center })),
+    [collection.entries],
+  )
+  const snapshots = useClimateSnapshots(climatePoints)
+  const renderFieldLabel = useCallback(
+    (field: Field) => (
+      <FieldClimateBadge name={field.name} areaHectares={field.shape.areaHectares} snapshot={snapshots.get(field.id)} />
+    ),
+    [snapshots],
+  )
 
   const isEditing = workspace.editingId !== null
   const liveCollection = useMemo(
@@ -158,6 +172,7 @@ export function FieldsPage() {
           onPolygonClose={selection.closePolygon}
           onCenterMove={selection.setCenter}
           onSavedSelect={workspace.activate}
+          renderFieldLabel={renderFieldLabel}
         />
         <MapToolbar
           baseLayerId={baseLayerId}

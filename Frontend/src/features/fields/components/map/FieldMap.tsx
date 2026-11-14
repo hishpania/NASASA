@@ -1,4 +1,5 @@
 import { DEFAULT_VIEW, type BaseLayerConfig } from '@/config/map'
+import type { ReactNode } from 'react'
 import { MapContainer, TileLayer } from 'react-leaflet'
 import type { Field } from '../../model/collection'
 import type { FieldDraft } from '../../model/draft'
@@ -27,6 +28,7 @@ type FieldMapProps = {
   onPolygonClose: () => void
   onCenterMove: (point: LatLng) => void
   onSavedSelect: (id: string) => void
+  renderFieldLabel?: (field: Field) => ReactNode
 }
 
 export function FieldMap({
@@ -45,6 +47,7 @@ export function FieldMap({
   onPolygonClose,
   onCenterMove,
   onSavedSelect,
+  renderFieldLabel,
 }: FieldMapProps) {
   const isPlacing = draft.mode === 'radius' || !draft.isPolygonClosed
   const hasDraft = draft.mode === 'polygon' ? draft.vertices.length > 0 : draft.center !== null
@@ -56,7 +59,12 @@ export function FieldMap({
       doubleClickZoom={false}
       className="size-full"
     >
-      <TileLayer key={baseLayer.id} url={baseLayer.url} attribution={baseLayer.attribution} maxZoom={baseLayer.maxZoom} />
+      <TileLayer
+        key={baseLayer.id}
+        url={baseLayer.url}
+        attribution={baseLayer.attribution}
+        maxZoom={baseLayer.maxZoom}
+      />
       <MapInteraction isPlacing={isPlacing} onPlace={onPlace} />
       <MapFocusController focus={focus} />
       <UserLocationLayer position={userPosition} />
@@ -66,6 +74,7 @@ export function FieldMap({
         hiddenId={editingId}
         interactive={!hasDraft}
         onSelect={onSavedSelect}
+        renderLabel={renderFieldLabel}
       />
       {draft.mode === 'polygon' ? (
         <PolygonDraftLayer
