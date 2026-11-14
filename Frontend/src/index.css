@@ -17,6 +17,11 @@
   backdrop-filter: blur(4px);
 }
 
+.leaflet-tooltip.field-label-compact {
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
 .leaflet-tooltip.field-label::before {
   display: none;
 }

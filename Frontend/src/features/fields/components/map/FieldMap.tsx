@@ -5,6 +5,7 @@ import type { Field } from '../../model/collection'
 import type { FieldDraft } from '../../model/draft'
 import type { LatLng } from '../../model/geo'
 import type { LocatedPosition } from '../../services'
+import type { LabelVariant } from './labelLayout'
 import { MapFocusController, type MapFocus } from './MapFocusController'
 import { MapInteraction } from './MapInteraction'
 import { PolygonDraftLayer } from './PolygonDraftLayer'
@@ -28,7 +29,7 @@ type FieldMapProps = {
   onPolygonClose: () => void
   onCenterMove: (point: LatLng) => void
   onSavedSelect: (id: string) => void
-  renderFieldLabel?: (field: Field) => ReactNode
+  renderFieldLabel?: (field: Field, variant: LabelVariant) => ReactNode
 }
 
 export function FieldMap({

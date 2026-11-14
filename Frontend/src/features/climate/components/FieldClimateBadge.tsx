@@ -4,6 +4,7 @@ type FieldClimateBadgeProps = {
   name: string
   areaHectares: number
   snapshot: ClimateSnapshot | undefined
+  compact?: boolean
 }
 
 type Stat = {
@@ -15,7 +16,19 @@ type Stat = {
 
 const areaFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
 
-export function FieldClimateBadge({ name, areaHectares, snapshot }: FieldClimateBadgeProps) {
+export function FieldClimateBadge({ name, areaHectares, snapshot, compact = false }: FieldClimateBadgeProps) {
+  if (compact) {
+    const temperature = snapshot?.temperature
+    return (
+      <div className="flex max-w-36 items-baseline gap-2 text-sm/5">
+        <span className="truncate font-semibold text-zinc-950 dark:text-white">{name}</span>
+        {temperature != null && (
+          <span className="shrink-0 text-zinc-600 tabular-nums dark:text-zinc-300">{temperature.toFixed(0)}°</span>
+        )}
+      </div>
+    )
+  }
+
   const stats: Stat[] = [
     { label: 'Air', value: snapshot?.temperature, unit: '°C', format: (value) => value.toFixed(1) },
     { label: 'Rain, 7 days', value: snapshot?.weeklyPrecipitation, unit: 'mm', format: (value) => value.toFixed(0) },

@@ -21,6 +21,7 @@ import {
   useFieldWorkspace,
   type Bounds,
   type Field,
+  type LabelVariant,
   type LatLng,
   type MapFocus,
   type Place,
@@ -73,8 +74,13 @@ export function FieldsPage() {
   )
   const snapshots = useClimateSnapshots(climatePoints)
   const renderFieldLabel = useCallback(
-    (field: Field) => (
-      <FieldClimateBadge name={field.name} areaHectares={field.shape.areaHectares} snapshot={snapshots.get(field.id)} />
+    (field: Field, variant: LabelVariant) => (
+      <FieldClimateBadge
+        name={field.name}
+        areaHectares={field.shape.areaHectares}
+        snapshot={snapshots.get(field.id)}
+        compact={variant === 'compact'}
+      />
     ),
     [snapshots],
   )
