@@ -1,15 +1,15 @@
-import { Button } from '@/components/catalyst/button'
-import { ArrowPathIcon } from '@heroicons/react/16/solid'
-import { useState } from 'react'
-import { generateDashboardData } from '../model/demoData'
-import { ChartCard } from './ChartCard'
-import { CropAreaChart } from './CropAreaChart'
-import { NdviTrendChart } from './NdviTrendChart'
-import { RainfallChart } from './RainfallChart'
-import { StatTile } from './StatTile'
+import { Button } from "@/components/catalyst/button";
+import { ArrowPathIcon } from "@heroicons/react/16/solid";
+import { useState } from "react";
+import { generateDashboardData } from "../model/demoData";
+import { ChartCard } from "./ChartCard";
+import { CropAreaChart } from "./CropAreaChart";
+import { NdviTrendChart } from "./NdviTrendChart";
+import { RainfallChart } from "./RainfallChart";
+import { StatTile } from "./StatTile";
 
 export function DashboardView() {
-  const [data, setData] = useState(generateDashboardData)
+  const [data, setData] = useState(generateDashboardData);
 
   return (
     <div className="space-y-6">
@@ -34,13 +34,19 @@ export function DashboardView() {
         >
           <NdviTrendChart fields={data.fields} data={data.ndvi} />
         </ChartCard>
-        <ChartCard title="Monthly rainfall" description="Precipitation across all fields, in millimeters.">
+        <ChartCard
+          title="Monthly rainfall"
+          description="Precipitation across all fields, in millimeters."
+        >
           <RainfallChart data={data.rainfall} />
         </ChartCard>
-        <ChartCard title="Area by crop" description="Planted hectares for the current season.">
+        <ChartCard
+          title="Area by crop"
+          description="Planted hectares for the current season."
+        >
           <CropAreaChart data={data.crops} />
         </ChartCard>
       </div>
     </div>
-  )
+  );
 }

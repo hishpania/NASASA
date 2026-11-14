@@ -4,6 +4,7 @@ import { NavLink } from 'react-router'
 const LINKS = [
   { to: '/', label: 'Fields' },
   { to: '/dashboard', label: 'Dashboard' },
+  { to: '/nasa', label: 'NASA data' },
 ] as const
 
 export function AppNav() {
@@ -16,7 +17,7 @@ export function AppNav() {
           end
           className={({ isActive }) =>
             clsx(
-              'flex-1 rounded-md px-3 py-1.5 text-center text-sm/6 font-medium transition',
+              'flex-1 rounded-md px-3 py-1.5 text-center text-sm/6 font-medium whitespace-nowrap transition',
               isActive
                 ? 'bg-white text-zinc-950 shadow-xs ring-1 ring-zinc-950/5 dark:bg-zinc-700 dark:text-white dark:ring-white/10'
                 : 'text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white',
