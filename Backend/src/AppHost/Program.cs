@@ -23,6 +23,7 @@ var api = builder.AddProject<Projects.Web>(Services.WebApi)
 builder.AddViteApp(Services.WebFrontend, "../../../Frontend")
     .WithReference(api)
     .WaitFor(api)
+    .WithEndpoint("http", endpoint => endpoint.Port = 5173)
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();

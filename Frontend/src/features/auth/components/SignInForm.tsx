@@ -65,7 +65,7 @@ export function SignInForm() {
         <Input
           type="email"
           name="email"
-          autoComplete="email"
+          autoComplete="username"
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
