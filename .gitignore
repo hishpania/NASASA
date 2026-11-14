@@ -218,3 +218,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Frontend source folders shadowed by the Python rules above
+!Frontend/src/lib/
+
+# .NET
+Backend/artifacts/
+*.user
+.vs/
+.idea/
+
+# Node
+node_modules/
+Frontend/dist/
+
+# OS
+.DS_Store
