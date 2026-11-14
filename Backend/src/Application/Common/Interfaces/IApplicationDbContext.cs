@@ -4,7 +4,7 @@ public interface IApplicationDbContext
 {
     DbSet<User> Users { get; }
 
-    DbSet<Territory> Territories { get; }
+    DbSet<Field> Fields { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

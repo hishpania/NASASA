@@ -1,10 +1,10 @@
 import { AuthProvider, useAuth } from '@/features/auth'
 import { SignInPage } from '@/pages/SignInPage'
-import { TerritorySelectorPage } from '@/pages/TerritorySelectorPage'
+import { FieldsPage } from '@/pages/FieldsPage'
 
 function Screen() {
   const { session } = useAuth()
-  return session ? <TerritorySelectorPage key={session.user.id} /> : <SignInPage />
+  return session ? <FieldsPage key={session.user.id} /> : <SignInPage />
 }
 
 export function App() {

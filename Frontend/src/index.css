@@ -8,7 +8,7 @@
   font-family: var(--font-sans);
 }
 
-.leaflet-div-icon.territory-handle {
+.leaflet-div-icon.shape-handle {
   background: transparent;
   border: none;
 }

@@ -11,8 +11,8 @@ internal sealed class ApiExceptionOperationTransformer : IOpenApiOperationTransf
         operation.Responses ??= [];
         operation.Responses.TryAdd("400", new OpenApiResponse { Description = "Bad Request" });
 
-        var requiresAuth = context.Description.ActionDescriptor.EndpointMetadata
-            .Any(m => m is IAuthorizeData);
+        var metadata = context.Description.ActionDescriptor.EndpointMetadata;
+        var requiresAuth = metadata.Any(m => m is IAuthorizeData) && !metadata.Any(m => m is IAllowAnonymous);
 
         if (requiresAuth)
         {

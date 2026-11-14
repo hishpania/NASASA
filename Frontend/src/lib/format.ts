@@ -1,4 +1,4 @@
-import type { LatLng } from '@/features/territory/model/geo'
+import type { LatLng } from '@/features/fields/model/geo'
 
 const hectareFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })
 const kilometerFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })

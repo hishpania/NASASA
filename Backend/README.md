@@ -29,13 +29,13 @@ Start in the `.\src\Application\` folder.
 Create a new command:
 
 ```
-dotnet new ca-usecase --name CreateTerritory --feature-name Territories --usecase-type command --return-type int
+dotnet new ca-usecase --name CreateField --feature-name Fields --usecase-type command --return-type int
 ```
 
 Create a new query:
 
 ```
-dotnet new ca-usecase -n GetTerritories -fn Territories -ut query -rt TerritoriesVm
+dotnet new ca-usecase -n GetFields -fn Fields -ut query -rt FieldsVm
 ```
 
 If you encounter the error *"No templates or subcommands found matching: 'ca-usecase'."*, install the template and try again:
@@ -43,15 +43,3 @@ If you encounter the error *"No templates or subcommands found matching: 'ca-use
 ```bash
 dotnet new install Clean.Architecture.Solution.Template::10.8.0
 ```
-
-## Test
-
-The solution contains unit, integration, and functional tests.
-
-To run the tests:
-```bash
-dotnet test
-```
-
-## Help
-To learn more about the template go to the [project website](https://cleanarchitecture.jasontaylor.dev). Here you can find additional guidance, request new features, report a bug, and discuss the template with other users.

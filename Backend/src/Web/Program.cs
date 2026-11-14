@@ -38,8 +38,6 @@ app.MapScalarApiReference();
 app.Map("/", () => Results.Redirect("/scalar"));
 
 app.MapDefaultEndpoints();
-app.MapEndpoints(typeof(Program).Assembly);
+app.MapControllers();
 
 app.Run();
-
-public partial class Program;

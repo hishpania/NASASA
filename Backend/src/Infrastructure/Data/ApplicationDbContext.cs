@@ -9,7 +9,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 {
     public DbSet<User> Users => Set<User>();
 
-    public DbSet<Territory> Territories => Set<Territory>();
+    public DbSet<Field> Fields => Set<Field>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

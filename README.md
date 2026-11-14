@@ -1,13 +1,13 @@
 # NASASA
 
-Agro territory selection platform: a React map client, a .NET Clean Architecture API on PostgreSQL, and standalone ML models.
+Agro field selection platform: a React map client, a .NET Clean Architecture API on PostgreSQL, and standalone ML models.
 
 ## Structure
 
 | Folder | Contents |
 | --- | --- |
-| `Backend/` | .NET 10 solution based on [Clean Architecture](https://github.com/jasontaylordev/CleanArchitecture): `Domain`, `Application`, `Infrastructure`, `Web` (minimal API), `AppHost` (Aspire orchestration) and tests |
-| `Frontend/` | React 19 + Vite + Tailwind (Catalyst UI) territory selector with Leaflet maps |
+| `Backend/` | .NET 10 solution based on [Clean Architecture](https://github.com/jasontaylordev/CleanArchitecture): `Domain`, `Application`, `Infrastructure`, `Web` (minimal API), `AppHost` (Aspire orchestration) |
+| `Frontend/` | React 19 + Vite + Tailwind (Catalyst UI) field selector with Leaflet maps |
 | `Model/` | ML models, each one a separate program |
 
 ## Run everything
@@ -34,10 +34,10 @@ The development database is seeded with `demo@neosphere.local` / `demo1234`.
 | `POST` | `/api/Auth/register` | — |
 | `POST` | `/api/Auth/login` | — |
 | `GET` | `/api/Auth/me` | Bearer JWT |
-| `GET` | `/api/Territories` | Bearer JWT |
-| `POST` | `/api/Territories` | Bearer JWT |
-| `PUT` | `/api/Territories/{id}` | Bearer JWT |
-| `DELETE` | `/api/Territories/{id}` | Bearer JWT |
+| `GET` | `/api/Fields` | Bearer JWT |
+| `POST` | `/api/Fields` | Bearer JWT |
+| `PUT` | `/api/Fields/{id}` | Bearer JWT |
+| `DELETE` | `/api/Fields/{id}` | Bearer JWT |
 
 ## Database
 
@@ -48,11 +48,3 @@ cd Backend
 dotnet ef migrations add <Name> --project src/Infrastructure --startup-project src/Web --output-dir Data/Migrations
 ```
 
-## Tests
-
-```bash
-cd Backend
-dotnet test
-```
-
-Functional tests start a throwaway PostgreSQL container through Aspire, so Docker must be running.

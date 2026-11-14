@@ -1,4 +1,4 @@
-import type { LatLng } from '@/features/territory/model/geo'
+import type { LatLng } from '@/features/fields/model/geo'
 
 export type BaseLayerId = 'streets' | 'satellite'
 

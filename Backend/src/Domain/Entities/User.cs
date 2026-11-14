@@ -6,5 +6,5 @@ public class User : BaseAuditableEntity
 
     public required string PasswordHash { get; set; }
 
-    public ICollection<Territory> Territories { get; } = [];
+    public ICollection<Field> Fields { get; } = [];
 }
