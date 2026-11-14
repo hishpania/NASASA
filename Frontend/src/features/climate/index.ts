@@ -1,1 +1,1 @@
-export { ClimateView } from "./components/ClimateView";
+export { ClimateView } from './components/ClimateView'

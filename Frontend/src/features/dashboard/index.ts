@@ -1,6 +1,6 @@
-export { DashboardView } from "./components/DashboardView";
-export { ChartCard } from "./components/ChartCard";
-export { ChartTooltip } from "./components/ChartTooltip";
-export { SeriesLegend } from "./components/SeriesLegend";
-export { StatTile } from "./components/StatTile";
-export { CHART_THEME, SERIES_COLORS } from "./model/chartTheme";
+export { DashboardView } from './components/DashboardView'
+export { ChartCard } from './components/ChartCard'
+export { ChartTooltip } from './components/ChartTooltip'
+export { SeriesLegend } from './components/SeriesLegend'
+export { StatTile } from './components/StatTile'
+export { CHART_THEME, SERIES_COLORS } from './model/chartTheme'

@@ -1,24 +1,16 @@
-import { CHART_THEME, ChartTooltip, SERIES_COLORS } from "@/features/dashboard";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import type { ClimateDay } from "../model/climate";
+import { CHART_THEME, ChartTooltip, SERIES_COLORS } from '@/features/dashboard'
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import type { ClimateDay } from '../model/climate'
 
 type DailyLineChartProps = {
-  days: ClimateDay[];
-  dataKey: keyof ClimateDay;
-  name: string;
-  color?: string;
-  domain?: [number, number];
-  formatValue: (value: number) => string;
-  formatTick?: (value: number) => string;
-};
+  days: ClimateDay[]
+  dataKey: keyof ClimateDay
+  name: string
+  color?: string
+  domain?: [number, number]
+  formatValue: (value: number) => string
+  formatTick?: (value: number) => string
+}
 
 export function DailyLineChart({
   days,
@@ -31,10 +23,7 @@ export function DailyLineChart({
 }: DailyLineChartProps) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart
-        data={days}
-        margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
-      >
+      <LineChart data={days} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
         <CartesianGrid stroke={CHART_THEME.grid} vertical={false} />
         <XAxis
           dataKey="label"
@@ -47,14 +36,12 @@ export function DailyLineChart({
           tick={CHART_THEME.tick}
           tickLine={false}
           axisLine={false}
-          domain={domain ?? ["auto", "auto"]}
+          domain={domain ?? ['auto', 'auto']}
           tickFormatter={formatTick}
         />
         <Tooltip
-          cursor={{ stroke: CHART_THEME.axis, strokeDasharray: "3 3" }}
-          content={(props) => (
-            <ChartTooltip {...props} formatValue={formatValue} />
-          )}
+          cursor={{ stroke: CHART_THEME.axis, strokeDasharray: '3 3' }}
+          content={(props) => <ChartTooltip {...props} formatValue={formatValue} />}
         />
         <Line
           dataKey={dataKey}
@@ -67,5 +54,5 @@ export function DailyLineChart({
         />
       </LineChart>
     </ResponsiveContainer>
-  );
+  )
 }

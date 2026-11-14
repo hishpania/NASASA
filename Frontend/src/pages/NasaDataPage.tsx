@@ -1,12 +1,12 @@
-import { Heading } from "@/components/catalyst/heading";
-import { Text } from "@/components/catalyst/text";
-import { AppNav } from "@/components/navigation/AppNav";
-import { SignOutButton } from "@/components/navigation/SignOutButton";
-import { useAuth } from "@/features/auth";
-import { ClimateView } from "@/features/climate";
+import { Heading } from '@/components/catalyst/heading'
+import { Text } from '@/components/catalyst/text'
+import { AppNav } from '@/components/navigation/AppNav'
+import { SignOutButton } from '@/components/navigation/SignOutButton'
+import { useAuth } from '@/features/auth'
+import { ClimateView } from '@/features/climate'
 
 export function NasaDataPage() {
-  const { session } = useAuth();
+  const { session } = useAuth()
 
   return (
     <div className="min-h-dvh bg-zinc-50 dark:bg-zinc-950">
@@ -26,5 +26,5 @@ export function NasaDataPage() {
         <ClimateView />
       </main>
     </div>
-  );
+  )
 }

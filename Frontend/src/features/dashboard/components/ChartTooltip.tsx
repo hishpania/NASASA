@@ -1,20 +1,12 @@
-import type { TooltipContentProps, TooltipValueType } from "recharts";
+import type { TooltipContentProps, TooltipValueType } from 'recharts'
 
-type ChartTooltipProps = TooltipContentProps<
-  TooltipValueType,
-  string | number
-> & {
-  formatValue?: (value: number) => string;
-};
+type ChartTooltipProps = TooltipContentProps<TooltipValueType, string | number> & {
+  formatValue?: (value: number) => string
+}
 
-export function ChartTooltip({
-  active,
-  payload,
-  label,
-  formatValue = String,
-}: ChartTooltipProps) {
+export function ChartTooltip({ active, payload, label, formatValue = String }: ChartTooltipProps) {
   if (!active || !payload?.length) {
-    return null;
+    return null
   }
 
   return (
@@ -22,16 +14,9 @@ export function ChartTooltip({
       <p className="font-medium text-zinc-950 dark:text-white">{label}</p>
       <ul>
         {payload.map((entry) => (
-          <li
-            key={String(entry.dataKey)}
-            className="flex items-center justify-between gap-4"
-          >
+          <li key={String(entry.dataKey)} className="flex items-center justify-between gap-4">
             <span className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
-              <span
-                className="size-2.5 rounded-full"
-                style={{ backgroundColor: entry.color }}
-                aria-hidden="true"
-              />
+              <span className="size-2.5 rounded-full" style={{ backgroundColor: entry.color }} aria-hidden="true" />
               {entry.name}
             </span>
             <span className="font-medium text-zinc-950 tabular-nums dark:text-white">
@@ -41,5 +26,5 @@ export function ChartTooltip({
         ))}
       </ul>
     </div>
-  );
+  )
 }
