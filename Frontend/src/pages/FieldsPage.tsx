@@ -1,7 +1,8 @@
-import { Button } from '@/components/catalyst/button'
 import { Divider } from '@/components/catalyst/divider'
 import { Heading, Subheading } from '@/components/catalyst/heading'
 import { Text } from '@/components/catalyst/text'
+import { AppNav } from '@/components/navigation/AppNav'
+import { SignOutButton } from '@/components/navigation/SignOutButton'
 import { BASE_LAYERS, type BaseLayerId } from '@/config/map'
 import { useAuth } from '@/features/auth'
 import {
@@ -25,11 +26,10 @@ import {
   type MapFocus,
   type Place,
 } from '@/features/fields'
-import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/16/solid'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export function FieldsPage() {
-  const { session, signOut } = useAuth()
+  const { session } = useAuth()
   const workspace = useFieldWorkspace()
   const { selection, collection } = workspace
   const { draft, shape, previewShape } = selection
@@ -84,10 +84,10 @@ export function FieldsPage() {
               <Heading>Fields</Heading>
               <Text className="truncate">{session?.user.email}</Text>
             </div>
-            <Button plain aria-label="Sign out" onClick={signOut}>
-              <ArrowRightStartOnRectangleIcon data-slot="icon" />
-            </Button>
+            <SignOutButton />
           </header>
+
+          <AppNav />
 
           {workspace.error && <WorkspaceNotice message={workspace.error} />}
 
