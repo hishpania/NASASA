@@ -1,10 +1,16 @@
-using Ardalis.GuardClauses;
+﻿using Ardalis.GuardClauses;
 using Neosphere.Application.Common.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Neosphere.Web.Infrastructure;
 
+/// <summary>
+/// Converts well-known application exceptions into RFC 9110-compliant <see cref="ProblemDetails"/> responses,
+/// mapping <see cref="ValidationException"/> → 400, <see cref="NotFoundException"/> → 404,
+/// <see cref="UnauthorizedAccessException"/> → 401.
+/// Unrecognised exceptions are not handled and fall through to the default middleware.
+/// </summary>
 public class ProblemDetailsExceptionHandler : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
