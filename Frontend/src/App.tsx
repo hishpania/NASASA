@@ -1,15 +1,19 @@
 import { AuthProvider, useAuth } from '@/features/auth'
-import { DashboardPage } from '@/pages/DashboardPage'
+import { AppLayout } from '@/components/layout/AppLayout'
 import { FieldsPage } from '@/pages/FieldsPage'
 import { NasaDataPage } from '@/pages/NasaDataPage'
 import { SignInPage } from '@/pages/SignInPage'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 
 const router = createBrowserRouter([
-  { path: '/', element: <FieldsPage /> },
-  { path: '/dashboard', element: <DashboardPage /> },
-  { path: '/nasa', element: <NasaDataPage /> },
-  { path: '*', element: <Navigate to="/" replace /> },
+  {
+    element: <AppLayout />,
+    children: [
+      { path: '/', element: <FieldsPage /> },
+      { path: '/nasa', element: <NasaDataPage /> },
+      { path: '*', element: <Navigate to="/" replace /> },
+    ],
+  },
 ])
 
 function Screen() {

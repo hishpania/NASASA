@@ -1,6 +1,6 @@
 import { Link } from '@/components/catalyst/link'
 import { Text } from '@/components/catalyst/text'
-import { ChartCard, SERIES_COLORS, StatTile } from '@/features/dashboard'
+import { ChartCard, SERIES_COLORS, StatTile } from '@/components/charts'
 import { fieldApi, type Field, type LatLng } from '@/features/fields'
 import { useEffect, useMemo, useState } from 'react'
 import { useClimateData } from '../hooks/useClimateData'

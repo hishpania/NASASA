@@ -1,4 +1,4 @@
-import { CHART_THEME, SERIES_COLORS } from '@/features/dashboard'
+import { CHART_THEME, SERIES_COLORS } from '@/components/charts'
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { TooltipContentProps, TooltipValueType } from 'recharts'
 import type { ClimateDay } from '../model/climate'

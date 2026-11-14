@@ -1,10 +1,7 @@
 import { Divider } from '@/components/catalyst/divider'
 import { Heading, Subheading } from '@/components/catalyst/heading'
 import { Text } from '@/components/catalyst/text'
-import { AppNav } from '@/components/navigation/AppNav'
-import { SignOutButton } from '@/components/navigation/SignOutButton'
 import { BASE_LAYERS, type BaseLayerId } from '@/config/map'
-import { useAuth } from '@/features/auth'
 import {
   DraftActions,
   GeolocationNotice,
@@ -29,7 +26,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export function FieldsPage() {
-  const { session } = useAuth()
   const workspace = useFieldWorkspace()
   const { selection, collection } = workspace
   const { draft, shape, previewShape } = selection
@@ -76,18 +72,10 @@ export function FieldsPage() {
   )
 
   return (
-    <div className="flex h-dvh flex-col-reverse lg:flex-row">
+    <div className="flex h-full flex-col-reverse lg:flex-row">
       <aside className="max-h-[55dvh] overflow-y-auto border-t border-zinc-950/5 bg-white lg:max-h-none lg:w-104 lg:shrink-0 lg:border-t-0 lg:border-r dark:border-white/5 dark:bg-zinc-900">
         <div className="space-y-8 p-6">
-          <header className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <Heading>Fields</Heading>
-              <Text className="truncate">{session?.user.email}</Text>
-            </div>
-            <SignOutButton />
-          </header>
-
-          <AppNav />
+          <Heading>Fields</Heading>
 
           {workspace.error && <WorkspaceNotice message={workspace.error} />}
 
