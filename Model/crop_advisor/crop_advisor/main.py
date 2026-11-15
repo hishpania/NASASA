@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Query, Request
 
 from . import schemas
 from .crops import CROPS, LAND_USE_NAMES
+from .forecast import Forecast
 from .model import RotationModel
 from .providers.base import AdviceRequest
 from .providers.ecocrop import GlobalRulesProvider
@@ -40,6 +41,7 @@ async def lifespan(app: FastAPI):
         providers = [UsModelProvider(sources, model)] if model else []
         providers.append(GlobalRulesProvider(sources, model_missing=model is None))
         app.state.model = model
+        app.state.sources = sources
         app.state.advisor = Advisor(providers)
         yield
 
@@ -87,5 +89,37 @@ async def advice(
 
     try:
         return await request.app.state.advisor.advise(AdviceRequest(latitude, longitude, previous, irrigated))
+    except SourceUnavailable as error:
+        raise HTTPException(503, str(error)) from error
+
+
+def _forecast_schema(forecast: Forecast) -> schemas.Forecast:
+    return schemas.Forecast(
+        latitude=forecast.latitude,
+        longitude=forecast.longitude,
+        last_observed=forecast.last_observed,
+        source="NASA POWER monthly, 2001 to date",
+        series=[
+            schemas.ForecastSeries(
+                id=outlook.indicator.id,
+                name=outlook.indicator.name,
+                unit=outlook.indicator.unit,
+                history=[schemas.ForecastPoint(**vars(point)) for point in outlook.history],
+                forecast=[schemas.ForecastPoint(**vars(point)) for point in outlook.forecast],
+                skill=[schemas.ForecastSkill(**vars(skill)) for skill in outlook.skill],
+            )
+            for outlook in forecast.outlooks
+        ],
+    )
+
+
+@app.get("/forecast")
+async def forecast(
+    request: Request,
+    latitude: Annotated[float, Query(ge=-90, le=90)],
+    longitude: Annotated[float, Query(ge=-180, le=180)],
+) -> schemas.Forecast:
+    try:
+        return _forecast_schema(await request.app.state.sources.forecast(latitude, longitude))
     except SourceUnavailable as error:
         raise HTTPException(503, str(error)) from error

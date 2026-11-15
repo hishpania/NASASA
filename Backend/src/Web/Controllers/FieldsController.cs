@@ -7,6 +7,7 @@ using Neosphere.Application.Fields.Commands.UpdateField;
 using Neosphere.Application.Fields.Models;
 using Neosphere.Application.Fields.Queries.GetFields;
 using Neosphere.Application.Recommendations.Models;
+using Neosphere.Application.Recommendations.Queries.GetFieldForecast;
 using Neosphere.Application.Recommendations.Queries.GetFieldRecommendations;
 
 namespace Neosphere.Web.Controllers;
@@ -38,6 +39,17 @@ public sealed class FieldsController(ISender sender) : ControllerBase
         [FromQuery] bool irrigated = false,
         CancellationToken cancellationToken = default) =>
         Ok(await sender.Send(new GetFieldRecommendationsQuery(id, previousCrops ?? [], irrigated), cancellationToken));
+
+    [HttpGet("{id:int}/forecast")]
+    [EndpointSummary("Forecast field climate")]
+    [EndpointDescription(
+        "Returns the last two years of monthly temperature, precipitation and root zone soil wetness for a field owned by the current user, " +
+        "and a forecast for the next twelve months. Where the model does not beat the long-term normal in a backtest, the normal is returned.")]
+    [ProducesResponseType<ClimateForecastDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<ClimateForecastDto>> GetForecast(int id, CancellationToken cancellationToken) =>
+        Ok(await sender.Send(new GetFieldForecastQuery(id), cancellationToken));
 
     [HttpPost]
     [EndpointSummary("Create field")]

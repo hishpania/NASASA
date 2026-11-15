@@ -21,12 +21,12 @@ type FieldListProps = {
   onSelect: (id: string) => void
   onRename: (id: string, name: string) => void
   onRenameCommit: (id: string) => void
-  onEdit: (id: string) => void
+  onEdit: ((id: string) => void) | null
   onRemove: (id: string) => void
 }
 
 /** The saved fields as a plain pick list; rarely used actions live in each row's menu. */
-export function FieldList({ collection, activeId, analyseHref, onSelect, ...actions }: FieldListProps) {
+export function FieldList({ collection, activeId, analyseHref, onSelect, onEdit, ...actions }: FieldListProps) {
   return (
     <ul className="space-y-1.5">
       {collection.entries.map((entry) => (
@@ -38,7 +38,7 @@ export function FieldList({ collection, activeId, analyseHref, onSelect, ...acti
           onSelect={() => onSelect(entry.id)}
           onRename={(name) => actions.onRename(entry.id, name)}
           onRenameCommit={() => actions.onRenameCommit(entry.id)}
-          onEdit={() => actions.onEdit(entry.id)}
+          onEdit={onEdit && (() => onEdit(entry.id))}
           onRemove={() => actions.onRemove(entry.id)}
         />
       ))}
@@ -53,7 +53,7 @@ type FieldRowProps = {
   onSelect: () => void
   onRename: (name: string) => void
   onRenameCommit: () => void
-  onEdit: () => void
+  onEdit: (() => void) | null
   onRemove: () => void
 }
 
@@ -141,7 +141,7 @@ function FieldRow({
                 setIsRenaming(true)
               }}
             />
-            <MenuAction icon={PencilSquareIcon} label="Edit boundary" onClick={onEdit} />
+            {onEdit && <MenuAction icon={PencilSquareIcon} label="Edit boundary" onClick={onEdit} />}
             <MenuAction icon={TrashIcon} label="Delete" onClick={onRemove} destructive />
           </Headless.MenuItems>
         </Headless.Menu>

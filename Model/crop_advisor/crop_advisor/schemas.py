@@ -111,3 +111,36 @@ class CropInfo(Schema):
     sowing: str
     fixes_nitrogen: bool
     water_need: int
+
+
+class ForecastPoint(Schema):
+    month: str
+    value: float
+    normal: float
+    low: float | None = None
+    high: float | None = None
+    method: str | None = None
+
+
+class ForecastSkill(Schema):
+    horizon: int
+    model_error: float
+    normal_error: float
+    method: str
+
+
+class ForecastSeries(Schema):
+    id: str
+    name: str
+    unit: str
+    history: list[ForecastPoint]
+    forecast: list[ForecastPoint]
+    skill: list[ForecastSkill]
+
+
+class Forecast(Schema):
+    latitude: float
+    longitude: float
+    last_observed: str
+    source: str
+    series: list[ForecastSeries]

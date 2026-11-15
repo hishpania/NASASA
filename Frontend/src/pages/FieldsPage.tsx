@@ -25,7 +25,11 @@ import {
   type Place,
 } from '@/features/fields'
 import { useGuide } from '@/features/guide'
+import { DesktopOnlyNote } from '@/components/ui/DesktopOnlyNote'
+import { NoFieldState } from '@/components/ui/NoFieldState'
+import { useIsPhone } from '@/lib/useIsPhone'
 import { PencilIcon } from '@heroicons/react/24/solid'
+import clsx from 'clsx'
 import { useCallback, useEffect, useState } from 'react'
 import BackhandIndexPointingDown from '~icons/fluent-emoji-flat/backhand-index-pointing-down'
 
@@ -43,6 +47,7 @@ export function FieldsPage() {
   const [focus, setFocus] = useState<MapFocus | null>(null)
   const [requestedTool, setRequestedTool] = useState<DrawingTool>('select')
   const [hasStartedFirstField, setStartedFirstField] = useState(false)
+  const isPhone = useIsPhone()
 
   const focusOn = useCallback((point: LatLng, bounds: Bounds | null = null) => {
     setFocus((previous) => ({ id: (previous?.id ?? 0) + 1, point, bounds }))
@@ -67,14 +72,11 @@ export function FieldsPage() {
 
   const handlePlaceSelect = (selectedPlace: Place) => {
     focusOn(selectedPlace.point, selectedPlace.bounds)
-    if (tool === 'radius') {
-      selection.setCenter(selectedPlace.point)
-    }
   }
 
   const isEditing = editingId !== null
-  const hasDraft = draft.mode === 'polygon' ? draft.vertices.length > 0 : draft.center !== null
-  const tool: DrawingTool = requestedTool !== 'select' || hasDraft || isEditing ? draft.mode : 'select'
+  const hasDraft = draft.vertices.length > 0
+  const tool: DrawingTool = !isPhone && (requestedTool !== 'select' || hasDraft || isEditing) ? 'polygon' : 'select'
 
   const cancelDrawing = useCallback(() => {
     if (isEditing) {
@@ -90,7 +92,6 @@ export function FieldsPage() {
       cancelDrawing()
       return
     }
-    selection.setMode(next)
     setRequestedTool(next)
   }
 
@@ -120,12 +121,11 @@ export function FieldsPage() {
   }, [collection.isEmpty, completeStep])
 
   useEffect(() => {
-    if (!hasStartedFirstField && workspace.status === 'ready' && collection.isEmpty) {
+    if (!hasStartedFirstField && !isPhone && workspace.status === 'ready' && collection.isEmpty) {
       setStartedFirstField(true)
-      selection.setMode('polygon')
       setRequestedTool('polygon')
     }
-  }, [hasStartedFirstField, workspace.status, collection.isEmpty, selection])
+  }, [hasStartedFirstField, isPhone, workspace.status, collection.isEmpty])
 
   const showsFirstFieldTitle = collection.isEmpty && tool === 'polygon' && draft.vertices.length === 0
 
@@ -133,13 +133,18 @@ export function FieldsPage() {
     describeDrawingStep(tool, {
       vertexCount: draft.vertices.length,
       isPolygonClosed: draft.isPolygonClosed,
-      hasCenter: draft.center !== null,
     }) ??
-    (collection.isEmpty && workspace.status === 'ready' ? 'Choose Outline or Circle to draw a field boundary' : null)
+    (!isPhone && collection.isEmpty && workspace.status === 'ready' ? 'Choose Outline to draw a field boundary' : null)
 
   return (
     <div className="flex h-full flex-col-reverse lg:flex-row">
-      <aside className="max-h-[45dvh] overflow-y-auto border-t border-zinc-950/5 bg-white lg:max-h-none lg:w-88 lg:shrink-0 lg:border-t-0 lg:border-r dark:border-white/5 dark:bg-zinc-900">
+      <aside
+        className={clsx(
+          'overflow-y-auto border-t border-zinc-950/5 bg-white lg:max-h-none lg:w-88 lg:shrink-0 lg:border-t-0 lg:border-r dark:border-white/5 dark:bg-zinc-900',
+          isPhone ? 'flex-1' : 'max-h-[45dvh]',
+          isPhone && collection.isEmpty && 'border-t-0',
+        )}
+      >
         <div className="space-y-6 p-5">
           <div>
             <Heading>My fields</Heading>
@@ -148,15 +153,24 @@ export function FieldsPage() {
 
           {workspace.error && <WorkspaceNotice message={workspace.error} />}
 
-          <div className="space-y-3">
-            <LocationSearch near={geolocation.position?.point ?? null} onSelect={handlePlaceSelect} />
-            {geolocation.error && <GeolocationNotice error={geolocation.error} onRetry={() => void locateUser()} />}
-          </div>
+          {!isPhone && (
+            <div className="space-y-3">
+              <LocationSearch near={geolocation.position?.point ?? null} onSelect={handlePlaceSelect} />
+              {geolocation.error && <GeolocationNotice error={geolocation.error} onRetry={() => void locateUser()} />}
+            </div>
+          )}
 
           {workspace.status === 'loading' ? (
             <Text>Loading fields…</Text>
           ) : collection.isEmpty ? (
-            <FirstFieldSteps />
+            isPhone ? (
+              <NoFieldState
+                title="No fields yet"
+                description="Here you can view your fields, their climate and crop advice."
+              />
+            ) : (
+              <FirstFieldSteps />
+            )
           ) : (
             <FieldList
               collection={collection}
@@ -165,44 +179,60 @@ export function FieldsPage() {
               onSelect={selectInList}
               onRename={workspace.rename}
               onRenameCommit={workspace.saveName}
-              onEdit={workspace.startEditing}
+              onEdit={isPhone ? null : workspace.startEditing}
               onRemove={workspace.remove}
             />
+          )}
+
+          {isPhone && !collection.isEmpty && (
+            <DesktopOnlyNote>To add a field or change its boundary, open this site on a computer.</DesktopOnlyNote>
           )}
         </div>
       </aside>
 
-      <main className="relative min-h-[55dvh] flex-1">
-        <FieldMap
-          baseLayer={BASE_LAYERS[baseLayerId]}
-          draft={draft}
-          isDrawing={tool !== 'select'}
-          canClosePolygon={selection.canClosePolygon}
-          savedEntries={collection.entries}
-          activeId={currentId}
-          editingId={editingId}
-          focus={focus}
-          userPosition={geolocation.position}
-          onPlace={selection.placePoint}
-          onVertexMove={selection.moveVertex}
-          onVertexInsert={selection.insertVertex}
-          onVertexRemove={selection.removeVertex}
-          onPolygonClose={selection.closePolygon}
-          onCenterMove={selection.setCenter}
-          onSavedSelect={select}
-          renderFieldLabel={renderFieldLabel}
-        />
-        <MapToolbar
-          baseLayerId={baseLayerId}
-          isLocating={geolocation.status === 'locating'}
-          onBaseLayerChange={setBaseLayerId}
-          onLocate={() => void locateUser()}
-        />
+      <main
+        className={clsx(
+          'relative',
+          isPhone ? 'h-44 shrink-0' : 'min-h-[55dvh] flex-1',
+          isPhone && collection.isEmpty && 'hidden',
+        )}
+      >
+        {workspace.status !== 'loading' && (
+          <FieldMap
+            baseLayer={BASE_LAYERS[baseLayerId]}
+            draft={draft}
+            isDrawing={tool !== 'select'}
+            readOnly={isPhone}
+            frame={current?.shape.bounds ?? null}
+            startAt={current?.shape.bounds ?? null}
+            canClosePolygon={selection.canClosePolygon}
+            savedEntries={collection.entries}
+            activeId={currentId}
+            editingId={editingId}
+            focus={focus}
+            userPosition={geolocation.position}
+            onPlace={selection.placePoint}
+            onVertexMove={selection.moveVertex}
+            onVertexInsert={selection.insertVertex}
+            onVertexRemove={selection.removeVertex}
+            onPolygonClose={selection.closePolygon}
+            onSavedSelect={select}
+            renderFieldLabel={renderFieldLabel}
+          />
+        )}
+        {!isPhone && (
+          <MapToolbar
+            baseLayerId={baseLayerId}
+            isLocating={geolocation.status === 'locating'}
+            onBaseLayerChange={setBaseLayerId}
+            onLocate={() => void locateUser()}
+          />
+        )}
         {showsFirstFieldTitle && (
           <div className="pointer-events-none absolute inset-x-0 top-16 z-1000 flex justify-center px-3">
             <p className="flex items-center gap-2 rounded-full bg-zinc-950/80 px-4 py-2 text-base/6 font-semibold text-white shadow-xl backdrop-blur">
               <PencilIcon className="size-5 text-emerald-400" aria-hidden="true" />
-              Outline your field
+              Outline one crop
             </p>
           </div>
         )}
@@ -213,22 +243,23 @@ export function FieldsPage() {
               {mapHint}
             </p>
           )}
-          <DrawingToolbar
-            tool={tool}
-            onToolChange={changeTool}
-            vertexCount={draft.vertices.length}
-            isPolygonClosed={draft.isPolygonClosed}
-            canClosePolygon={selection.canClosePolygon}
-            radiusMeters={draft.radiusMeters}
-            areaHectares={shape?.areaHectares ?? null}
-            isEditing={isEditing}
-            canSave={shape !== null && !isResolving && !workspace.isSaving && workspace.status === 'ready'}
-            onUndo={selection.undoVertex}
-            onFinish={selection.closePolygon}
-            onRadiusChange={selection.setRadius}
-            onSave={saveDrawing}
-            onCancel={cancelDrawing}
-          />
+          {!isPhone && (
+            <DrawingToolbar
+              tool={tool}
+              onToolChange={changeTool}
+              vertexCount={draft.vertices.length}
+              isPolygonClosed={draft.isPolygonClosed}
+              canClosePolygon={selection.canClosePolygon}
+              areaHectares={shape?.areaHectares ?? null}
+              isEditing={isEditing}
+              canSave={shape !== null && !isResolving && !workspace.isSaving && workspace.status === 'ready'}
+              onUndo={selection.undoVertex}
+              onFinish={selection.closePolygon}
+              onClear={selection.clear}
+              onSave={saveDrawing}
+              onCancel={cancelDrawing}
+            />
+          )}
         </div>
       </main>
     </div>

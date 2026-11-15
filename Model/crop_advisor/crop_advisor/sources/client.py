@@ -1,6 +1,7 @@
 """Async access to the external data services, with a small in-memory cache."""
 
 import asyncio
+import datetime
 import logging
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
@@ -8,9 +9,10 @@ from typing import TypeVar
 
 import httpx
 
+from .. import forecast as outlook
 from ..climate import ClimateNormals
 from ..crops import land_use_from_cdl
-from . import cdl, power, soil
+from . import cdl, power, power_monthly, soil
 
 T = TypeVar("T")
 
@@ -22,6 +24,7 @@ _FIELD_PRECISION = 4
 _CACHE_SIZE = 2048
 
 POWER_TIMEOUT = 9.0
+POWER_MONTHLY_TIMEOUT = 20.0
 CDL_TIMEOUT = 7.0
 SOIL_TIMEOUT = 6.0
 
@@ -60,6 +63,20 @@ class DataSources:
                 raise SourceUnavailable(f"NASA POWER climate normals are unavailable: {error}") from error
 
         return await self._cached(("climate", round(latitude, _CLIMATE_PRECISION), round(longitude, _CLIMATE_PRECISION)), load)
+
+    async def forecast(self, latitude: float, longitude: float) -> outlook.Forecast:
+        async def load() -> outlook.Forecast:
+            params = power_monthly.query(latitude, longitude, datetime.date.today().year)
+            try:
+                response = await self._http.get(power_monthly.URL, params=params, timeout=POWER_MONTHLY_TIMEOUT)
+                response.raise_for_status()
+                series = power_monthly.parse(response.json())
+                return await asyncio.to_thread(outlook.build, series)
+            except (httpx.HTTPError, KeyError, ValueError) as error:
+                raise SourceUnavailable(f"NASA POWER monthly data is unavailable: {error}") from error
+
+        key = ("forecast", round(latitude, _CLIMATE_PRECISION), round(longitude, _CLIMATE_PRECISION), datetime.date.today())
+        return await self._cached(key, load)
 
     async def land_use(self, latitude: float, longitude: float, year: int) -> str | None:
         """Land use the Cropland Data Layer saw in `year`; None when it has no answer."""
