@@ -77,8 +77,11 @@ export function AdviceView() {
   const advice = result.status === 'loaded' ? result.advice : result.status === 'loading' ? result.previous : null
   const strategies = useMemo(() => (advice ? rankStrategies(advice.strategies, priority) : []), [advice, priority])
   const emphasized = useMemo(() => emphasizedIndicators(priority), [priority])
+  const newestSeen = result.status === 'loaded' ? (result.advice.history[0]?.year ?? null) : null
   const asksLastSeason =
-    result.status === 'loaded' && result.advice.history.length === 0 && reportedCrop === undefined
+    result.status === 'loaded' &&
+    reportedCrop === undefined &&
+    (newestSeen === null || newestSeen < new Date().getFullYear() - 1)
 
   const { complete: completeStep } = useGuide()
   const knowsHistory = result.status === 'loaded' && !asksLastSeason
@@ -143,7 +146,12 @@ export function AdviceView() {
       </div>
 
       {asksLastSeason && (
-        <LastSeasonPrompt fieldName={field.name} landUses={result.advice.landUses} onAnswer={setReportedCrop} />
+        <LastSeasonPrompt
+          fieldName={field.name}
+          newestSeen={newestSeen}
+          landUses={result.advice.landUses}
+          onAnswer={setReportedCrop}
+        />
       )}
 
       {result.status === 'failed' && (
