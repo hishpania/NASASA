@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 URL = "https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest"
+SOURCE = "USDA NRCS SSURGO soil survey, dominant component, topsoil"
 
 _QUERY = """
 SELECT TOP 1 mu.muname, c.drainagecl, ch.ph1to1h2o_r, ch.om_r, ch.claytotal_r, ch.sandtotal_r
@@ -22,6 +23,7 @@ class Soil:
     organic_matter: float | None  # % of the topsoil by weight
     clay: float | None  # %
     sand: float | None  # %
+    source: str = SOURCE
 
 
 def request_body(latitude: float, longitude: float) -> dict[str, str]:

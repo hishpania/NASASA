@@ -8,9 +8,14 @@ from ..geo import is_in_conus
 from ..model import RotationModel
 from ..sources import cdl
 from ..sources.client import DataSources
-from .base import AdviceRequest, OutOfCoverage, Season, assess_all, compose, recommend, reported_history
+from ..sources.soil import SOURCE as SOIL_SURVEY
+from .base import NO_FROST_GAP, AdviceRequest, OutOfCoverage, Season, assess_all, compose, recommend, reported_history
 
 HISTORY_YEARS = 5
+_ESTIMATE_GAP = (
+    "The soil survey did not answer for this point, so soil pH is a 5 km SoilGrids estimate; "
+    "a soil test on the field is more accurate."
+)
 
 INFO = schemas.ProviderInfo(
     id="us-rotation-model",
@@ -36,17 +41,19 @@ class UsModelProvider:
     async def advise(self, request: AdviceRequest) -> schemas.Advice:
         point = request.latitude, request.longitude
         years = range(cdl.LATEST_YEAR, cdl.LATEST_YEAR - HISTORY_YEARS, -1)
-        climate, soil, *land_uses = await asyncio.gather(
+        climate, soil, lows, *land_uses = await asyncio.gather(
             self._sources.climate(*point),
             self._sources.soil(*point),
+            self._sources.daily_lows(*point),
             *(self._sources.land_use(*point, year) for year in years),
         )
+        soil = soil or await self._sources.soil_estimate(*point)
         observed = [Season(land_use, year) for year, land_use in zip(years, land_uses) if land_use]
         history = reported_history(request) or observed
         if not history:
             raise OutOfCoverage("the Cropland Data Layer has no crop history here")
         past = [season.land_use for season in history]
-        suitabilities = assess_all(climate, soil, request.irrigated)
+        suitabilities = assess_all(climate, soil, request.irrigated, lows)
         climate_features = climate.features()
 
         def successor(previous: str, previous_2: str | None) -> dict[str, float]:
@@ -79,7 +86,13 @@ class UsModelProvider:
         if past[0] == OTHER_CROP:
             gaps.append("The latest crop on this field is outside the catalog, so rotation effects are approximate.")
         if soil is None:
-            gaps.append("The soil survey did not answer for this point; soil pH is not taken into account.")
+            gaps.append(
+                "Neither the soil survey nor SoilGrids answered for this point; soil pH is not taken into account."
+            )
+        elif soil.source != SOIL_SURVEY:
+            gaps.append(_ESTIMATE_GAP)
+        if lows is None:
+            gaps.append(NO_FROST_GAP)
         gaps.append("The model reflects what farmers planted in 2018–2024, which is common practice, not proof of what is best.")
 
         return compose(

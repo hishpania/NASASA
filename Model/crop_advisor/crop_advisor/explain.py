@@ -48,6 +48,28 @@ def describe(suitability: Suitability, irrigated: bool) -> tuple[list[str], list
             f"The season provides about {suitability.season_share:.0%} of the heat it needs to mature; "
             "an early variety is required."
         )
+    frost = suitability.frost
+    if frost and frost.kind == "seedling":
+        if frost.factor < 1:
+            cautions.append(
+                f"Frost below {frost.threshold:.0f} °C hit in the first month after sowing "
+                f"in {frost.years} of the last {frost.total} years; sow later or choose a hardier crop."
+            )
+        elif frost.years == 0:
+            reasons.append(
+                f"No frost below {frost.threshold:.0f} °C in the first month after sowing in any of the last "
+                f"{frost.total} years."
+            )
+    elif frost:
+        if frost.factor < 1:
+            cautions.append(
+                f"Winter lows fell below {frost.threshold:.0f} °C, the limit a dormant stand survives, "
+                f"in {frost.years} of the last {frost.total} winters."
+            )
+        elif frost.years == 0:
+            reasons.append(
+                f"Winter lows stayed above {frost.threshold:.0f} °C in all of the last {frost.total} winters."
+            )
     if suitability.limiting_factor == "winter":
         cautions.append("Winters here are cold enough to kill part of the stand without snow cover.")
     if suitability.ph_score is not None and suitability.ph_score < 1:

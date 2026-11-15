@@ -3,8 +3,10 @@ flowchart LR
     PM["NASA POWER, monthly<br/>2001 to today<br/>temperature, rain, soil wetness"]
     PC["NASA POWER, climate normals 2001–2025<br/>heat, frost, rain, soil wetness,<br/>humidity, sunlight, elevation"]
     CDL["USDA Cropland Data Layer<br/>what grew on the field, by satellite, 2016–2024"]
-    SOIL["USDA SSURGO<br/>soil acidity"]
-    ECO["Catalog of 17 crops<br/>FAO ECOCROP agronomic needs"]
+    PD["NASA POWER, daily for 10 years<br/>minimum temperature"]
+    SOIL["USDA SSURGO<br/>soil acidity, US"]
+    SG["ISRIC SoilGrids<br/>soil acidity, worldwide"]
+    ECO["Catalog of 17 crops<br/>FAO ECOCROP agronomic needs<br/>+ return interval to the field"]
   end
 
   subgraph M1["Model 1: seasonal outlook"]
@@ -18,7 +20,8 @@ flowchart LR
 
   subgraph R["Rules, no training"]
     SUIT["Crop suitability<br/>from climate and soil"]
-    ROT["Rotation penalties and bonuses"]
+    FROST["Frost risk: the month after sowing,<br/>and winter for winter wheat and alfalfa<br/>in how many of 10 years the minimum<br/>fell below the crop's threshold"]
+    ROT["Rotation penalties and bonuses<br/>back on the field too soon: penalty"]
   end
 
   SCORE["Ranking of crops<br/>and rotation plans"]
@@ -28,6 +31,8 @@ flowchart LR
   CDL --> HGB
   PC --> SUIT
   SOIL --> SUIT
+  SG -->|outside the US| SUIT
+  PD --> FROST --> SUIT
   ECO --> SUIT
   ECO --> ROT
   CDL --> ROT

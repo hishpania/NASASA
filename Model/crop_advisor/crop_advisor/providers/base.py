@@ -11,14 +11,15 @@ from ..climate import ClimateNormals
 from ..crops import CROPS, FALLOW, LAND_USE_NAMES
 from ..explain import describe
 from ..rotation import rotation_effect
+from ..sources.power_daily import DailyLows
 from ..sources.soil import Soil
-from ..suitability import Suitability, SowingWindow, assess
+from ..suitability import SowingWindow, Suitability, assess
 
 MAX_RECOMMENDATIONS = 6
 _REFERENCE_NEW_YEAR = date(2001, 1, 1)
 
 CLIMATE_SOURCE = "NASA POWER climatology, 2001–2025 monthly normals"
-SOIL_SOURCE = "USDA NRCS SSURGO soil survey, dominant component, topsoil"
+NO_FROST_GAP = "NASA POWER daily minimums did not answer, so frost after sowing and in winter is not checked."
 
 COMMON_GAPS = (
     "Climate is described by 2001–2025 normals from NASA POWER, not by a forecast for the coming season.",
@@ -75,9 +76,11 @@ def _optional(value: float) -> float | None:
     return None if isnan(value) else round(value, 2)
 
 
-def assess_all(climate: ClimateNormals, soil: Soil | None, irrigated: bool) -> dict[str, Suitability]:
+def assess_all(
+    climate: ClimateNormals, soil: Soil | None, irrigated: bool, lows: DailyLows | None = None
+) -> dict[str, Suitability]:
     ph = soil.ph if soil else None
-    return {crop.id: assess(crop, climate, soil_ph=ph, irrigated=irrigated) for crop in CROPS}
+    return {crop.id: assess(crop, climate, soil_ph=ph, irrigated=irrigated, lows=lows) for crop in CROPS}
 
 
 def reported_history(request: AdviceRequest) -> list[Season]:
@@ -112,7 +115,7 @@ def compose(
             record_low=_optional(climate.record_low),
             source=CLIMATE_SOURCE,
         ),
-        soil=schemas.SoilSummary(**soil.__dict__, source=SOIL_SOURCE) if soil else None,
+        soil=schemas.SoilSummary(**soil.__dict__) if soil else None,
         history=[
             schemas.HistoryEntry(year=season.year, land_use=_land_use(season.land_use), origin=season.origin)
             for season in history

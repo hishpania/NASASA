@@ -7,11 +7,14 @@ during that cycle are then compared with what the crop needs, and the score is
 limited by the scarcest factor (the FAO ECOCROP approach).
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from math import isnan
+from math import inf, isnan
+from typing import Literal
 
 from .climate import DAYS_IN_YEAR, ClimateNormals
 from .crops import Crop, Envelope
+from .sources.power_daily import DailyLows
 
 SOWING_WINDOW_DAYS = 21
 DORMANCY_TEMPERATURE = 5.0
@@ -25,6 +28,10 @@ WATER_SUPPLY_FULL = 0.9
 # Coldest-month means between which an autumn-sown crop goes from safe to lost.
 WINTERKILL_SAFE = -8.0
 WINTERKILL_LETHAL = -16.0
+# Share of past years with a damaging frost at which a crop goes from unaffected to written off.
+FROST_SAFE_SHARE = 0.1
+FROST_LETHAL_SHARE = 0.5
+SEEDLING_DAYS = 30
 _RAIN_SEARCH_STEP = 5
 _RAIN_SEARCH_DAYS = 120
 
@@ -36,6 +43,20 @@ class SowingWindow:
     start_day: int
     end_day: int
     maturity_day: int
+
+
+@dataclass(frozen=True)
+class FrostRisk:
+    """In how many of the observed years frost went below what the crop survives."""
+
+    kind: Literal["seedling", "winter"]
+    threshold: float
+    years: int
+    total: int
+
+    @property
+    def factor(self) -> float:
+        return 1.0 - _ramp(self.years / self.total, FROST_SAFE_SHARE, FROST_LETHAL_SHARE)
 
 
 @dataclass(frozen=True)
@@ -53,6 +74,7 @@ class Suitability:
     water_supply_ratio: float | None = None
     # Share of the thermal time the crop needs that the season provides.
     season_share: float = 1.0
+    frost: FrostRisk | None = None
     limiting_factor: str | None = None
 
     @property
@@ -121,7 +143,24 @@ def _grow(crop: Crop, climate: ClimateNormals, sowing_day: int) -> tuple[int, fl
     return MAX_CYCLE_DAYS, gathered
 
 
-def _assess(crop: Crop, climate: ClimateNormals, irrigated: bool) -> Suitability:
+def frost_risk(
+    crop: Crop, climate: ClimateNormals, sowing_day: int, cycle: Sequence[int], lows: DailyLows
+) -> FrostRisk:
+    """Frost on seedlings in the first weeks after sowing, or on a dormant stand in winter for crops that overwinter."""
+    if crop.winter_hardiness is not None:
+        season = cycle if crop.sowing == "autumn" else range(DAYS_IN_YEAR)
+        days = [day for day in season if climate.daily_temperature[day] < DORMANCY_TEMPERATURE]
+        kind, threshold = "winter", crop.winter_hardiness
+    else:
+        days = [(sowing_day + offset) % DAYS_IN_YEAR for offset in range(SEEDLING_DAYS)]
+        kind, threshold = "seedling", crop.frost_tolerance
+    hit = sum(
+        1 for year in lows.lows if min((year[day] for day in days if not isnan(year[day])), default=inf) < threshold
+    )
+    return FrostRisk(kind, threshold, hit, len(lows.years))
+
+
+def _assess(crop: Crop, climate: ClimateNormals, irrigated: bool, lows: DailyLows | None) -> Suitability:
     sowing_day = _sowing_day(crop, climate)
     if sowing_day is None:
         # Never warm enough to sow in spring, or no cool season for an autumn-sown crop.
@@ -152,10 +191,13 @@ def _assess(crop: Crop, climate: ClimateNormals, irrigated: bool) -> Suitability
     }
     if crop.sowing == "autumn":
         factors["winter"] = _ramp(climate.coldest_month_temperature, WINTERKILL_LETHAL, WINTERKILL_SAFE)
+    frost = frost_risk(crop, climate, sowing_day, cycle, lows) if lows else None
+    if frost:
+        factors["frost"] = frost.factor
 
     limiting_factor = min(factors, key=factors.__getitem__)
     score = min(factors["temperature"], factors["water"], factors["excess_water"])
-    score *= factors["season"] * factors.get("winter", 1.0)
+    score *= factors["season"] * factors.get("winter", 1.0) * factors.get("frost", 1.0)
     return Suitability(
         crop=crop,
         score=round(score, 3),
@@ -170,6 +212,7 @@ def _assess(crop: Crop, climate: ClimateNormals, irrigated: bool) -> Suitability
         cycle_rainfall=round(rainfall),
         water_supply_ratio=round(supply_ratio, 2),
         season_share=round(min(gathered / crop.thermal_time, 1.0), 2),
+        frost=frost,
         limiting_factor=limiting_factor if factors[limiting_factor] < 1 else None,
     )
 
@@ -180,8 +223,9 @@ def assess(
     *,
     soil_ph: float | None = None,
     irrigated: bool = False,
+    lows: DailyLows | None = None,
 ) -> Suitability:
-    result = _assess(crop, climate, irrigated)
+    result = _assess(crop, climate, irrigated, lows)
     if soil_ph is None or not result.is_viable:
         return result
 

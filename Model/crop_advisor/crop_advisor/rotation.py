@@ -40,9 +40,11 @@ def rotation_effect(crop: Crop, history: Sequence[str]) -> RotationEffect:
         )
     elif crop.id in history[: crop.rotation_gap_years]:
         factor *= SHORT_GAP_PENALTY
+        years_ago = history.index(crop.id) + 1
+        when = "last year" if years_ago == 1 else f"{years_ago} years ago"
         cautions.append(
-            f"{crop.name} grew here within the last {crop.rotation_gap_years} years; "
-            "a longer break keeps its soil-borne diseases down."
+            f"{crop.name} grew here {when}; it should return no sooner than every "
+            f"{crop.rotation_gap_years + 1} years to keep its soil-borne diseases down."
         )
     elif previous and previous.family == crop.family == "cereal":
         factor *= SAME_FAMILY_PENALTY

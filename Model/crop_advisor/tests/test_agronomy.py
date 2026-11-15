@@ -3,12 +3,25 @@ import unittest
 from crop_advisor import strategies
 from crop_advisor.climate import DAYS_IN_YEAR, daily_from_monthly
 from crop_advisor.crops import CROPS, CROPS_BY_ID, FALLOW, NON_CROP, OTHER_CROP, land_use_from_cdl
+from crop_advisor.explain import describe
 from crop_advisor.rotation import rotation_effect
+from crop_advisor.sources.power_daily import DailyLows
 from crop_advisor.suitability import assess, envelope_score
 
 from .climates import CORN_BELT, DRY_PLAINS, SOUTHERN, TROPICS
 
 MAY_1, JUNE_1, SEPTEMBER_1, NOVEMBER_1 = 120, 151, 243, 304
+
+
+def lows_with_frost(day, temperature, years_hit, total=10):
+    """Mild daily lows, with one frost on `day` in the first `years_hit` years."""
+    lows = []
+    for year in range(total):
+        days = [5.0] * DAYS_IN_YEAR
+        if year < years_hit:
+            days[day] = temperature
+        lows.append(tuple(days))
+    return DailyLows(years=tuple(range(2016, 2016 + total)), lows=tuple(lows))
 
 
 def assess_all(climate, **options):
@@ -51,6 +64,32 @@ class SuitabilityTests(unittest.TestCase):
         north = assess(CROPS_BY_ID["corn"], CORN_BELT).sowing.start_day
         south = assess(CROPS_BY_ID["corn"], SOUTHERN).sowing.start_day
         self.assertAlmostEqual((south - north) % DAYS_IN_YEAR, DAYS_IN_YEAR / 2, delta=10)
+
+    def test_frequent_frost_after_sowing_lowers_the_score(self):
+        corn = CROPS_BY_ID["corn"]
+        sowing_day = assess(corn, CORN_BELT).sowing.start_day
+        safe = assess(corn, CORN_BELT, lows=lows_with_frost(sowing_day + 5, -4, years_hit=0))
+        frosty = assess(corn, CORN_BELT, lows=lows_with_frost(sowing_day + 5, -4, years_hit=4))
+        self.assertEqual(safe.frost.years, 0)
+        self.assertEqual(frosty.frost.years, 4)
+        self.assertLess(frosty.score, safe.score)
+        _, cautions = describe(frosty, irrigated=False)
+        self.assertTrue(any("4 of the last 10 years" in caution for caution in cautions))
+
+    def test_frost_a_crop_tolerates_does_not_count(self):
+        barley = CROPS_BY_ID["barley"]
+        sowing_day = assess(barley, CORN_BELT).sowing.start_day
+        result = assess(barley, CORN_BELT, lows=lows_with_frost(sowing_day + 5, -4, years_hit=6))
+        self.assertEqual(result.frost.years, 0)
+
+    def test_hard_winters_hurt_winter_wheat(self):
+        wheat = CROPS_BY_ID["winter_wheat"]
+        mild = assess(wheat, CORN_BELT, lows=lows_with_frost(15, -20, years_hit=5))
+        harsh = assess(wheat, CORN_BELT, lows=lows_with_frost(15, -30, years_hit=5))
+        self.assertEqual(mild.frost.kind, "winter")
+        self.assertEqual(mild.frost.years, 0)
+        self.assertEqual(harsh.frost.years, 5)
+        self.assertLess(harsh.score, mild.score)
 
     def test_dry_climate_is_limited_by_water_unless_irrigated(self):
         rainfed = assess(CROPS_BY_ID["corn"], DRY_PLAINS)
@@ -101,8 +140,15 @@ class RotationTests(unittest.TestCase):
 
     def test_crop_with_a_long_break_must_not_return_early(self):
         early = rotation_effect(CROPS_BY_ID["sunflower"], ["spring_wheat", "sunflower"])
-        late = rotation_effect(CROPS_BY_ID["sunflower"], ["spring_wheat", "barley", "peas", "sunflower"])
+        still_early = rotation_effect(
+            CROPS_BY_ID["sunflower"], ["spring_wheat", "barley", "peas", "corn", "sunflower"]
+        )
+        late = rotation_effect(
+            CROPS_BY_ID["sunflower"], ["spring_wheat", "barley", "peas", "corn", "oats", "soybeans", "sunflower"]
+        )
         self.assertLess(early.factor, 1)
+        self.assertLess(still_early.factor, 1)
+        self.assertIn("every 7 years", still_early.cautions[0])
         self.assertGreaterEqual(late.factor, 1)
 
     def test_no_history_has_no_effect(self):

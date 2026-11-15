@@ -12,7 +12,8 @@ import httpx
 from .. import forecast as outlook
 from ..climate import ClimateNormals
 from ..crops import land_use_from_cdl
-from . import cdl, power, power_monthly, soil
+from . import cdl, power, power_daily, power_monthly, soil, soilgrids
+from .soil import Soil
 
 T = TypeVar("T")
 
@@ -25,6 +26,7 @@ _CACHE_SIZE = 2048
 
 POWER_TIMEOUT = 9.0
 POWER_MONTHLY_TIMEOUT = 20.0
+POWER_DAILY_TIMEOUT = 15.0
 CDL_TIMEOUT = 7.0
 SOIL_TIMEOUT = 6.0
 
@@ -103,4 +105,33 @@ class DataSources:
             return await self._cached(key, load)
         except (httpx.HTTPError, ValueError) as error:
             logger.warning("SSURGO lookup failed: %s", error)
+            return None
+
+    async def soil_estimate(self, latitude: float, longitude: float) -> Soil | None:
+        """Modelled topsoil pH from SoilGrids, for fields the soil survey does not cover."""
+        async def load() -> Soil | None:
+            return await asyncio.to_thread(soilgrids.soil_at, latitude, longitude)
+
+        key = ("soilgrids", round(latitude, _FIELD_PRECISION), round(longitude, _FIELD_PRECISION))
+        try:
+            return await self._cached(key, load)
+        except (OSError, ValueError) as error:
+            logger.warning("SoilGrids lookup failed: %s", error)
+            return None
+
+    async def daily_lows(self, latitude: float, longitude: float) -> power_daily.DailyLows | None:
+        """Daily minimum temperature of the last complete years; None when NASA POWER does not answer."""
+        last_year = datetime.date.today().year - 1
+
+        async def load() -> power_daily.DailyLows:
+            params = power_daily.query(latitude, longitude, last_year)
+            response = await self._http.get(power_daily.URL, params=params, timeout=POWER_DAILY_TIMEOUT)
+            response.raise_for_status()
+            return power_daily.parse(response.json())
+
+        key = ("daily_lows", round(latitude, _CLIMATE_PRECISION), round(longitude, _CLIMATE_PRECISION), last_year)
+        try:
+            return await self._cached(key, load)
+        except (httpx.HTTPError, KeyError, ValueError) as error:
+            logger.warning("NASA POWER daily minimums are unavailable: %s", error)
             return None

@@ -1,8 +1,11 @@
 import calendar
+import datetime
 import unittest
 
+import numpy as np
+
 from crop_advisor.geo import is_in_conus, to_conus_albers
-from crop_advisor.sources import cdl, power, soil
+from crop_advisor.sources import cdl, power, power_daily, soil, soilgrids
 
 
 def power_payload(**overrides):
@@ -70,6 +73,53 @@ class SoilTests(unittest.TestCase):
         parsed = soil.parse({"Table": [["Water", None, None, "", None, None]]})
         self.assertIsNone(parsed.ph)
         self.assertIsNone(parsed.organic_matter)
+
+
+class SoilGridsTests(unittest.TestCase):
+    NODATA = -32768
+
+    def test_takes_the_centre_cell(self):
+        cells = np.full((5, 5), 70)
+        cells[2, 2] = 62
+        self.assertEqual(soilgrids.ph_from_cells(cells, self.NODATA), 6.2)
+
+    def test_falls_back_to_the_median_of_the_neighbours(self):
+        cells = np.full((5, 5), self.NODATA)
+        cells[0, :3] = [60, 64, 80]
+        self.assertEqual(soilgrids.ph_from_cells(cells, self.NODATA), 6.4)
+
+    def test_no_value_around_gives_no_soil(self):
+        self.assertIsNone(soilgrids.ph_from_cells(np.full((5, 5), self.NODATA), self.NODATA))
+
+    def test_bundled_raster_covers_cropland_in_ukraine_and_the_us(self):
+        estimate = soilgrids.soil_at(49.2, 31.5)
+        self.assertEqual(estimate.source, soilgrids.SOURCE)
+        self.assertTrue(5 < estimate.ph < 8)
+        self.assertIsNotNone(soilgrids.soil_at(42.03, -93.62))
+
+
+class PowerDailyTests(unittest.TestCase):
+    @staticmethod
+    def payload(start, end):
+        days = (end - start).days + 1
+        dates = (start + datetime.timedelta(days=offset) for offset in range(days))
+        return {
+            "header": {"fill_value": -999.0},
+            "properties": {"parameter": {"T2M_MIN": {day.strftime("%Y%m%d"): -1.0 for day in dates}}},
+        }
+
+    def test_keeps_complete_years_without_the_leap_day(self):
+        lows = power_daily.parse(self.payload(datetime.date(2023, 1, 1), datetime.date(2024, 12, 31)))
+        self.assertEqual(lows.years, (2023, 2024))
+        self.assertTrue(all(len(year) == 365 for year in lows.lows))
+
+    def test_drops_an_incomplete_year(self):
+        lows = power_daily.parse(self.payload(datetime.date(2023, 1, 1), datetime.date(2024, 6, 30)))
+        self.assertEqual(lows.years, (2023,))
+
+    def test_query_covers_the_last_ten_years(self):
+        query = power_daily.query(49.2, 31.5, 2025)
+        self.assertEqual((query["start"], query["end"]), ("20160101", "20251231"))
 
 
 class GeoTests(unittest.TestCase):
