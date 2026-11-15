@@ -47,11 +47,14 @@ jobs:
         run: ssh app "cd $APP_DIR/deploy && docker compose up -d --build --remove-orphans && docker image prune -f"
 
       - name: Check the site answers
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
         run: |
+          base="${SITE_URL:-http://$DEPLOY_HOST}"
           for attempt in $(seq 1 30); do
-            page=$(curl -s -o /dev/null -w '%{http_code}' "http://$DEPLOY_HOST/" || true)
+            page=$(curl -s -o /dev/null -w '%{http_code}' "$base/" || true)
             # An anonymous call must reach the API and be refused (401), not fail at the proxy (502).
-            api=$(curl -s -o /dev/null -w '%{http_code}' "http://$DEPLOY_HOST/api/Auth/me" || true)
+            api=$(curl -s -o /dev/null -w '%{http_code}' "$base/api/Auth/me" || true)
             echo "attempt $attempt: page $page, api $api"
             if [ "$page" = 200 ] && [ "$api" = 401 ]; then exit 0; fi
             sleep 5
