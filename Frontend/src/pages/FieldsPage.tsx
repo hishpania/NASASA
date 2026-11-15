@@ -7,10 +7,10 @@ import {
   FieldMap,
   FieldList,
   FieldNameLabel,
+  FirstFieldSteps,
   GeolocationNotice,
   LocationSearch,
   MapToolbar,
-  readSavedMapView,
   useFieldWorkspace,
   useFields,
   useGeolocation,
@@ -25,9 +25,9 @@ import {
   type Place,
 } from '@/features/fields'
 import { useGuide } from '@/features/guide'
+import { PencilIcon } from '@heroicons/react/24/solid'
 import { useCallback, useEffect, useState } from 'react'
 import BackhandIndexPointingDown from '~icons/fluent-emoji-flat/backhand-index-pointing-down'
-import WorldMap from '~icons/fluent-emoji-flat/world-map'
 
 const renderFieldLabel = (field: Field, variant: LabelVariant) => <FieldNameLabel field={field} variant={variant} />
 
@@ -42,26 +42,18 @@ export function FieldsPage() {
   const [baseLayerId, setBaseLayerId] = useState<BaseLayerId>('satellite')
   const [focus, setFocus] = useState<MapFocus | null>(null)
   const [requestedTool, setRequestedTool] = useState<DrawingTool>('select')
-  // A returning user opens the map where they left it, not at their GPS position.
-  const [opensAtSavedView] = useState(() => readSavedMapView() !== null)
+  const [hasStartedFirstField, setStartedFirstField] = useState(false)
 
   const focusOn = useCallback((point: LatLng, bounds: Bounds | null = null) => {
     setFocus((previous) => ({ id: (previous?.id ?? 0) + 1, point, bounds }))
   }, [])
 
-  const locateUser = useCallback(
-    async (fly = true) => {
-      const position = await locate()
-      if (position && fly) {
-        focusOn(position.point)
-      }
-    },
-    [locate, focusOn],
-  )
-
-  useEffect(() => {
-    void locateUser(!opensAtSavedView)
-  }, [locateUser, opensAtSavedView])
+  const locateUser = useCallback(async () => {
+    const position = await locate()
+    if (position) {
+      focusOn(position.point)
+    }
+  }, [locate, focusOn])
 
   const currentId = current?.id ?? null
 
@@ -127,6 +119,16 @@ export function FieldsPage() {
     }
   }, [collection.isEmpty, completeStep])
 
+  useEffect(() => {
+    if (!hasStartedFirstField && workspace.status === 'ready' && collection.isEmpty) {
+      setStartedFirstField(true)
+      selection.setMode('polygon')
+      setRequestedTool('polygon')
+    }
+  }, [hasStartedFirstField, workspace.status, collection.isEmpty, selection])
+
+  const showsFirstFieldTitle = collection.isEmpty && tool === 'polygon' && draft.vertices.length === 0
+
   const mapHint =
     describeDrawingStep(tool, {
       vertexCount: draft.vertices.length,
@@ -154,13 +156,7 @@ export function FieldsPage() {
           {workspace.status === 'loading' ? (
             <Text>Loading fields…</Text>
           ) : collection.isEmpty ? (
-            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-zinc-950/15 px-4 py-6 text-center dark:border-white/15">
-              <WorldMap className="size-10" aria-hidden="true" />
-              <p className="text-sm/6 font-medium text-zinc-950 dark:text-white">No fields yet</p>
-              <p className="text-sm/6 text-zinc-500 dark:text-zinc-400">
-                Search for a location, then draw the field boundary with the tools below the map.
-              </p>
-            </div>
+            <FirstFieldSteps />
           ) : (
             <FieldList
               collection={collection}
@@ -202,6 +198,14 @@ export function FieldsPage() {
           onBaseLayerChange={setBaseLayerId}
           onLocate={() => void locateUser()}
         />
+        {showsFirstFieldTitle && (
+          <div className="pointer-events-none absolute inset-x-0 top-16 z-1000 flex justify-center px-3">
+            <p className="flex items-center gap-2 rounded-full bg-zinc-950/80 px-4 py-2 text-base/6 font-semibold text-white shadow-xl backdrop-blur">
+              <PencilIcon className="size-5 text-emerald-400" aria-hidden="true" />
+              Outline your field
+            </p>
+          </div>
+        )}
         <div className="pointer-events-none absolute inset-x-0 bottom-6 z-1000 flex flex-col items-center gap-2 px-3">
           {mapHint && (
             <p className="flex items-center gap-2 rounded-full bg-zinc-950/85 px-4 py-1.5 text-sm/6 font-medium text-white shadow-lg backdrop-blur">

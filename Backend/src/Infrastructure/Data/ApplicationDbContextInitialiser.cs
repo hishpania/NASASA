@@ -28,8 +28,8 @@ public class ApplicationDbContextInitialiser(
     ApplicationDbContext context,
     IPasswordHasher passwordHasher)
 {
-    public const string DemoEmail = "demo@neosphere.local";
-    public const string DemoPassword = "demo1234";
+    public const string DemoEmail = "demo@example.com";
+    public const string DemoPassword = "123456789";
 
     public async Task InitialiseAsync()
     {

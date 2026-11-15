@@ -26,7 +26,7 @@ The Aspire dashboard opens with links to:
 - `cropadvisor` — the crop advisor (FastAPI) with docs at `/docs`
 - `dbserver` — PostgreSQL with pgAdmin
 
-The development database is seeded with `demo@neosphere.local` / `demo1234`.
+The development database is seeded with `demo@example.com` / `123456789`.
 
 ## API
 
