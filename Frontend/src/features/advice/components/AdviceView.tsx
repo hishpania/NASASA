@@ -232,10 +232,10 @@ function AdviceContent({ advice, priority, onPriorityChange, strategies, emphasi
             label="Warm season"
             value={String(climate.growingDays)}
             unit="days a year"
-            hint="Mean temperature above 10 °C"
+            hint="Mean temperature of 5 °C or more"
             explanation={
               <div className="space-y-2">
-                <p>Days with a mean temperature above 10 °C, the base for most field crops.</p>
+                <p>Days with a mean temperature of 5 °C or more, when field crops can grow.</p>
                 <p>
                   Heat sum: <strong className="font-semibold">{Math.round(climate.growingDegreeDays)} °C·d</strong>.
                   Growing degree days above 10 °C. Each crop needs a set heat sum to reach maturity; a higher total
