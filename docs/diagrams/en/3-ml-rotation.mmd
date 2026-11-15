@@ -31,7 +31,7 @@ flowchart TB
 
   subgraph INFER["What the user sees"]
     PROBA["Share of similar US fields<br/>that sowed each crop after these crops"]
-    RULES["Agronomy: heat and water over the cycle,<br/>excess rain, winter survival, soil acidity<br/>+ rotation penalties and bonuses"]
+    RULES["Agronomy: heat and water over the cycle,<br/>excess rain, winter survival,<br/>frost risk after sowing and in winter<br/>from 10 years of daily minimums,<br/>soil acidity: SSURGO in the US, SoilGrids elsewhere<br/>+ rotation penalties and bonuses<br/>+ penalty when a crop returns sooner<br/>than its interval: sunflower 7 years, beet 4"]
     BLEND["Crop score = half model,<br/>half agronomy"]
   end
   MODEL --> PROBA --> BLEND
