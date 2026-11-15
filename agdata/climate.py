@@ -1,10 +1,13 @@
-"""Climate datasets: NASA POWER, PRISM and CoCoRaHS."""
+"""Climate datasets: NASA POWER, NMME forecasts, PRISM and CoCoRaHS."""
 
 import asyncio
 import io
+import re
 from typing import ClassVar, Sequence
 
+import numpy as np
 import pandas as pd
+from scipy.io import netcdf
 
 from agdata import base
 
@@ -182,6 +185,163 @@ class CoCoRaHS(base.Dataset):
         return pd.read_csv(io.StringIO(await self._text('GET', params=params)),
                            skipinitialspace=True,
                            parse_dates=['ObservationDate'])
+
+
+class NMME(base.Dataset):
+    """NMME seasonal forecasts (NOAA CPC): ensemble-mean monthly anomalies.
+
+    Defaults to NASA GMAO's GEOS-S2S model. A forecast is issued about the
+    8th of each month for 9 target months, starting with the issue month,
+    on a 1-degree global grid. Anomalies are relative to the model's own
+    hindcast climatology.
+    """
+
+    BASE_URL = 'https://ftp.cpc.ncep.noaa.gov/NMME/realtime_anom/ENSMEAN/'
+    MODEL: ClassVar[str] = 'NASA_GEOS5v2'
+    VARIABLES: ClassVar[tuple[str, ...]] = ('prate', 'tmp2m')
+    _CELL: ClassVar[float] = 1.0
+
+    async def point(self, lat: float, lon: float, start, end,
+                    variables: Sequence[str] | None = None,
+                    model: str | None = None) -> pd.DataFrame:
+        """Returns forecasts issued from `start` to `end` at a point.
+
+        Args:
+            lat: Latitude.
+            lon: Longitude.
+            start: First issue month.
+            end: Last issue month.
+            variables: CPC variables ('prate', 'tmp2m', 'tmpsfc');
+                defaults to `VARIABLES`.
+            model: CPC model, e.g. 'CFSv2' or 'NMME' (multi-model mean);
+                defaults to `MODEL`.
+
+        Returns:
+            One row per issue and target month at the nearest grid node:
+            issued, target, lead (months after issue) and one anomaly column
+            per variable; units in `.attrs`. Months without a forecast of
+            `model` are skipped and listed in `.attrs['missing']`.
+        """
+        lat, lon = base.check_point(lat, lon)
+        node_lat, node_lon = round(lat), _wrap(round(lon))
+        frame = await self._forecasts(
+            start, end, variables, model,
+            lambda lats, lons: (lats == node_lat, lons == node_lon))
+        return frame.drop(columns=['lat', 'lon'])
+
+    async def area(self, bbox: base.Bbox, start, end,
+                   variables: Sequence[str] | None = None,
+                   model: str | None = None) -> pd.DataFrame:
+        """Returns forecasts at each grid node of a bbox.
+
+        Args:
+            bbox: (west, south, east, north).
+            start: First issue month.
+            end: Last issue month.
+            variables: As in `point`.
+            model: As in `point`.
+
+        Returns:
+            As `point`, plus lat and lon columns: grid nodes whose 1-degree
+            cell intersects the bbox.
+        """
+        west, south, east, north = base.check_bbox(bbox)
+        half = self._CELL / 2
+
+        def select(lats, lons):
+            return ((lats >= south - half) & (lats <= north + half),
+                    (lons >= west - half) & (lons <= east + half))
+
+        return await self._forecasts(start, end, variables, model, select)
+
+    async def _forecasts(self, start, end, variables, model, select):
+        model = base.check_name(model or self.MODEL)
+        names = [base.check_name(v) for v in variables or self.VARIABLES]
+        months = pd.period_range(pd.Timestamp(start), pd.Timestamp(end),
+                                 freq='M')
+        folders = {}  # Issue month -> folder named <YYYYMM><DDHH>.
+        for found in re.finditer(r'href="((\d{4})(\d{2})\d{4})/"',
+                                 await self._text('GET')):
+            folders[pd.Period(f'{found[2]}-{found[3]}', 'M')] = found[1]
+
+        async def issue(month: pd.Period) -> pd.DataFrame | None:
+            if month not in folders:
+                return None
+            listing = await self._text('GET', f'{folders[month]}/')
+            files = [f'{model}.{name}.{month:%Y%m}.ENSMEAN.anom.nc'
+                     for name in names]
+            if not all(f'href="{f}"' in listing for f in files):
+                return None
+            grids = await asyncio.gather(*(
+                self._grid(f'{folders[month]}/{f}', select) for f in files))
+            if any(g.target.min() != month.to_timestamp() for g in grids):
+                raise base.DatasetError(f'NMME: {month} forecast does not '
+                                        f'start in its issue month.')
+            frame = pd.concat([g.set_index(['target', 'lat', 'lon']).value
+                               .rename(name)
+                               for g, name in zip(grids, names)], axis=1)
+            frame = frame.reset_index().assign(issued=month.to_timestamp())
+            frame.attrs = {n: g.attrs['value'] for g, n in zip(grids, names)}
+            return frame
+
+        results = dict(zip(months, await asyncio.gather(*map(issue, months))))
+        found = [r for r in results.values() if r is not None]
+        if not found:
+            raise base.DatasetError(f'NMME: no {model} forecasts issued '
+                                    f'from {months[0]} to {months[-1]}.')
+        frame = pd.concat(found, ignore_index=True)
+        frame['lead'] = ((frame.target.dt.year - frame.issued.dt.year) * 12
+                         + frame.target.dt.month - frame.issued.dt.month)
+        frame = frame[['issued', 'target', 'lead', 'lat', 'lon', *names]]
+        # The newest units apply: early files label prate mm/s as 'mm/d'.
+        frame.attrs = {**found[-1].attrs, 'missing': [
+            str(m) for m, r in results.items() if r is None]}
+        return frame
+
+    async def _grid(self, path: str, select) -> pd.DataFrame:
+        """Reads one netCDF-3 file: target, lat, lon, value rows."""
+        body = await self._request('GET', path)
+        try:
+            with netcdf.netcdf_file(io.BytesIO(body), mmap=False) as nc:
+                variables = nc.variables
+                units = variables['target'].units.decode()
+                targets = variables['target'].data.copy()
+                lats = variables['lat'].data.astype(float)
+                lons = _wrap(variables['lon'].data.astype(float))
+                # Early (2018) files name the variable 'anom'.
+                data = variables['fcst' if 'fcst' in variables else 'anom']
+                values = data.data.astype(float)
+                fill = getattr(data, '_FillValue', None)
+                value_units = data.units.decode()
+        except (KeyError, AttributeError, TypeError, ValueError,
+                OSError) as error:
+            raise base.DatasetError(f'NMME: unreadable netCDF {path}: '
+                                    f'{error}') from error
+        # Early files omit the epoch; `_forecasts` checks the dates.
+        if units != 'months' and not units.startswith('months since 1960-01'):
+            raise base.DatasetError(f'NMME: unexpected time units {units}.')
+        if values.shape != (len(targets), len(lats), len(lons)):
+            raise base.DatasetError(f'NMME: unexpected shape {values.shape}.')
+        rows, cols = select(lats, lons)
+        values = values[:, rows][:, :, cols]
+        if fill is not None:
+            values[values == fill] = np.nan
+        months = np.rint(targets).astype(int)
+        grid_lat, grid_lon = np.meshgrid(lats[rows], lons[cols], indexing='ij')
+        frame = pd.DataFrame({
+            'target': np.repeat([pd.Timestamp(1960 + m // 12, m % 12 + 1, 1)
+                                 for m in months], grid_lat.size),
+            'lat': np.tile(grid_lat.ravel(), len(months)),
+            'lon': np.tile(grid_lon.ravel(), len(months)),
+            'value': values.reshape(len(months), -1).ravel(),
+        }).dropna()
+        frame.attrs = {'value': value_units}
+        return frame
+
+
+def _wrap(lon):
+    """Maps longitudes to [-180, 180)."""
+    return (lon + 180) % 360 - 180
 
 
 def _widen(low: float, high: float, size: float,

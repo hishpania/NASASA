@@ -68,7 +68,7 @@ Credentials come from environment variables or `Class.login(...)`, which also ap
 - GET requests are retried `RETRIES` (3) times, with backoff, on timeouts and HTTP 429/502/503/504.
 - Coordinates, identifiers and URLs are validated. SQL values are quoted.
 - Download and redirect URLs taken from responses must stay on the expected hosts.
-- No pickle, `eval` or `exec`. Data is parsed only as JSON, CSV, plain text or GeoTIFF (`tifffile`).
+- No pickle, `eval` or `exec`. Data is parsed only as JSON, CSV, plain text, GeoTIFF (`tifffile`) or netCDF-3 (`scipy`).
 
 All of these limits are class attributes, so subclasses can override them (e.g. `TIMEOUT`).
 
@@ -100,11 +100,17 @@ All have `granules(bbox, start, end, short_name=None, limit=2000)`, which lists 
 | Class | Methods |
 |---|---|
 | `NasaPower` | `point(lat, lon, start, end, parameters=None, resolution='daily')` (hourly, daily or monthly), `climatology(lat, lon, parameters=None)`, `area(bbox, ...)` (daily or monthly), `climatology_area(bbox, ...)` |
+| `NMME` | `point(lat, lon, start, end, variables=None, model=None)`, `area(bbox, ...)`: seasonal forecasts issued from `start` to `end` |
 | `PRISM` | `daily(variable, start, end)`, `monthly(variable, start, end)`, `normals(variable)`: all **bulk** |
 | `CoCoRaHS` | `daily(state, start, end, county=None)` |
 
 `NasaPower` area methods use the regional API: grid nodes every 0.5° lat × 0.625° lon, bbox up to 10° per side,
 one request per parameter.
+
+`NMME` reads NOAA CPC's ensemble-mean monthly anomaly forecasts (1° grid, 9 target months from the issue month,
+`lead` 0-8), by default of NASA GMAO's GEOS-S2S (`MODEL = 'NASA_GEOS5v2'`, from 2018-04) for
+`VARIABLES = ('prate', 'tmp2m')` (mm/s, K). Each issue month downloads one 2.2 MB file per variable.
+Months without a forecast are skipped and listed in `df.attrs['missing']`.
 
 ### Land, terrain, imagery (`agdata.land`, `agdata.arcgis`)
 

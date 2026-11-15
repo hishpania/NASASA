@@ -28,6 +28,7 @@ GEDI = earthdata.GEDI
 
 # Climate.
 NasaPower = climate.NasaPower
+NMME = climate.NMME
 PRISM = climate.PRISM
 CoCoRaHS = climate.CoCoRaHS
 
