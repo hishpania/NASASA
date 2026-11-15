@@ -7,6 +7,8 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-install-project
 COPY crop_advisor/ crop_advisor/
 COPY data/ data/
+COPY --from=agdata . agdata/
+COPY --from=outlook . outlook/
 # The trained model is not in git: train it from the bundled dataset once, at build time.
 RUN python -c "from crop_advisor.model import RotationModel; RotationModel.load_or_train()"
 EXPOSE 8000

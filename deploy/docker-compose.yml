@@ -31,7 +31,11 @@ services:
         condition: service_healthy
 
   cropadvisor:
-    build: ../Model/crop_advisor
+    build:
+      context: ../Model/crop_advisor
+      additional_contexts:
+        agdata: ../agdata
+        outlook: ../Model/regressions/outlook
     restart: unless-stopped
 
   db:

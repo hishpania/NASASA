@@ -11,6 +11,7 @@ from . import schemas
 from .crops import CROPS, LAND_USE_NAMES
 from .forecast import Forecast
 from .model import RotationModel
+from .monthly_outlook import MonthlyOutlooks, Preparing
 from .providers.base import AdviceRequest
 from .providers.ecocrop import GlobalRulesProvider
 from .providers.router import Advisor
@@ -42,6 +43,7 @@ async def lifespan(app: FastAPI):
         providers.append(GlobalRulesProvider(sources, model_missing=model is None))
         app.state.model = model
         app.state.sources = sources
+        app.state.outlooks = MonthlyOutlooks()
         app.state.advisor = Advisor(providers)
         yield
 
@@ -124,3 +126,32 @@ async def forecast(
         return _forecast_schema(await request.app.state.sources.forecast(latitude, longitude))
     except SourceUnavailable as error:
         raise HTTPException(503, str(error)) from error
+
+
+@app.get("/outlook")
+async def monthly_outlook(
+    request: Request,
+    latitude: Annotated[float, Query(ge=-90, le=90)],
+    longitude: Annotated[float, Query(ge=-180, le=180)],
+) -> schemas.MonthlyOutlook:
+    try:
+        outlook = request.app.state.outlooks.at(latitude, longitude)
+    except SourceUnavailable as error:
+        raise HTTPException(503, str(error)) from error
+    if isinstance(outlook, Preparing):
+        return schemas.MonthlyOutlook(status="preparing", started_at=outlook.started_at)
+    return schemas.MonthlyOutlook(
+        status="ready",
+        forecast_date=outlook.forecast_date,
+        series=[
+            schemas.OutlookSeries(
+                id=series.id,
+                name=series.name,
+                units=series.units,
+                below_label=series.below_label,
+                above_label=series.above_label,
+                months=[schemas.OutlookMonth(**vars(month)) for month in series.months],
+            )
+            for series in outlook.series
+        ],
+    )

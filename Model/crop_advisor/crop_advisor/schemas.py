@@ -1,5 +1,7 @@
 """Wire format of the advice API. Field names are camelCase on the wire."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
@@ -156,3 +158,32 @@ class Forecast(Schema):
     last_observed: str
     source: str
     series: list[ForecastSeries]
+
+
+class OutlookMonth(Schema):
+    month: str
+    lead: int
+    below: float
+    near: float
+    above: float
+    normal_low: float
+    normal_high: float
+    confidence: str
+    skill: float
+    hit_rate: float
+
+
+class OutlookSeries(Schema):
+    id: str
+    name: str
+    units: str
+    below_label: str
+    above_label: str
+    months: list[OutlookMonth]
+
+
+class MonthlyOutlook(Schema):
+    status: str
+    started_at: datetime | None = None
+    forecast_date: str | None = None
+    series: list[OutlookSeries] = []

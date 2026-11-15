@@ -13,6 +13,10 @@ var database = builder
 var cropAdvisor = builder
     .AddUvicornApp(Services.CropAdvisor, "../../../Model/crop_advisor", "crop_advisor.main:app")
     .WithUv()
+    .WithEnvironment("PYTHONPATH", string.Join(
+        Path.PathSeparator,
+        Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "../../..")),
+        Path.GetFullPath(Path.Combine(builder.AppHostDirectory, "../../../Model/regressions"))))
     // Aspire would otherwise serve uvicorn over TLS with the developer certificate, which the API does not
     // trust on Linux; the advisor is an internal service, so plain HTTP is enough.
     .WithoutHttpsCertificate()

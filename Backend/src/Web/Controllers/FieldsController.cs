@@ -8,6 +8,7 @@ using Neosphere.Application.Fields.Models;
 using Neosphere.Application.Fields.Queries.GetFields;
 using Neosphere.Application.Recommendations.Models;
 using Neosphere.Application.Recommendations.Queries.GetFieldForecast;
+using Neosphere.Application.Recommendations.Queries.GetFieldOutlook;
 using Neosphere.Application.Recommendations.Queries.GetFieldRecommendations;
 
 namespace Neosphere.Web.Controllers;
@@ -50,6 +51,18 @@ public sealed class FieldsController(ISender sender) : ControllerBase
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<ClimateForecastDto>> GetForecast(int id, CancellationToken cancellationToken) =>
         Ok(await sender.Send(new GetFieldForecastQuery(id), cancellationToken));
+
+    [HttpGet("{id:int}/outlook")]
+    [EndpointSummary("Monthly outlook of a field")]
+    [EndpointDescription(
+        "Returns the chance that each of the next twelve months is below, near or above normal for air temperature, " +
+        "relative humidity and root zone soil wetness at a field owned by the current user. The first request for a region " +
+        "starts training its models and answers with status \"preparing\"; ask again until the status is \"ready\".")]
+    [ProducesResponseType<MonthlyOutlookDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<MonthlyOutlookDto>> GetOutlook(int id, CancellationToken cancellationToken) =>
+        Ok(await sender.Send(new GetFieldOutlookQuery(id), cancellationToken));
 
     [HttpPost]
     [EndpointSummary("Create field")]
