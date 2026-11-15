@@ -44,7 +44,7 @@ jobs:
             Backend Frontend Model deploy app:"$APP_DIR"/
 
       - name: Rebuild and restart
-        run: ssh app "cd $APP_DIR/deploy && docker compose up -d --build --remove-orphans && docker image prune -f"
+        run: ssh app "cd $APP_DIR/deploy && docker compose up -d --build --remove-orphans && docker image prune -f && docker builder prune -f --filter until=72h"
 
       - name: Check the site answers
         env:
