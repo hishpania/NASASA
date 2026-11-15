@@ -16,7 +16,7 @@ export function MapToolbar({ baseLayerId, isLocating, onBaseLayerChange, onLocat
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-1000 flex justify-end p-3">
       <div className="pointer-events-auto flex items-center gap-2">
-        <Button color="white" onClick={onLocate} disabled={isLocating} aria-label="Show my location">
+        <Button color="white" onClick={onLocate} disabled={isLocating} aria-label="Show my location" title="Your browser will ask to share your location">
           {isLocating ? <ArrowPathIcon data-slot="icon" className="animate-spin" /> : <MapPinIcon data-slot="icon" />}
           <span className="max-sm:hidden">My location</span>
         </Button>

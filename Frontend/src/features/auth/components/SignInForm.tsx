@@ -5,7 +5,7 @@ import { Input } from '@/components/catalyst/input'
 import { Strong, Text } from '@/components/catalyst/text'
 import { SegmentedControl, type SegmentedOption } from '@/components/ui/SegmentedControl'
 import { ApiError } from '@/lib/api'
-import { ArrowRightEndOnRectangleIcon, InformationCircleIcon, UserPlusIcon } from '@heroicons/react/20/solid'
+import { ArrowRightEndOnRectangleIcon, UserPlusIcon } from '@heroicons/react/20/solid'
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
 
@@ -62,7 +62,6 @@ export function SignInForm() {
   const copy = COPY[mode]
   const { email, password, confirmation } = values[mode]
   const isSignUp = mode === 'signUp'
-  const isDemo = !isSignUp && email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password
 
   const update = (field: keyof FormValues, value: string) => {
     setValues((current) => ({ ...current, [mode]: { ...current[mode], [field]: value } }))
@@ -97,14 +96,6 @@ export function SignInForm() {
           <Heading>{copy.heading}</Heading>
           <Text>{copy.lead}</Text>
         </div>
-        {isDemo && (
-          <div className="flex items-start gap-3 rounded-lg bg-amber-500/10 p-3 ring-1 ring-amber-500/30">
-            <InformationCircleIcon className="mt-0.5 size-5 shrink-0 text-amber-500" aria-hidden="true" />
-            <p className="flex-1 text-sm/6 text-zinc-700 dark:text-zinc-300">
-              The <Strong>demo account</Strong> is filled in. Press Sign in, or replace it with your own email and password.
-            </p>
-          </div>
-        )}
         <FieldGroup>
           <Field>
             <Label>Email</Label>
