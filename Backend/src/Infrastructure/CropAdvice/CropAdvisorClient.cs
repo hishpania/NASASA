@@ -56,5 +56,28 @@ internal sealed class CropAdvisorClient(HttpClient http) : ICropAdvisor
         }
     }
 
+    public async Task<ClimateForecastDto> GetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken)
+    {
+        var query = new QueryBuilder
+        {
+            { "latitude", latitude.ToString("R", CultureInfo.InvariantCulture) },
+            { "longitude", longitude.ToString("R", CultureInfo.InvariantCulture) }
+        };
+
+        try
+        {
+            using var response = await http.GetAsync($"forecast{query.ToQueryString()}", cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadFromJsonAsync<ClimateForecastDto>(SerializerOptions, cancellationToken)
+                ?? throw new CropAdvisorUnavailableException("The crop advisor returned an empty forecast.");
+        }
+        catch (Exception exception) when (exception is not CropAdvisorUnavailableException
+                                          && !cancellationToken.IsCancellationRequested)
+        {
+            throw new CropAdvisorUnavailableException("The crop advisor service did not answer.", exception);
+        }
+    }
+
     private sealed record AdvisorProblem(string? Detail);
 }

@@ -1,12 +1,11 @@
 import { Button } from '@/components/catalyst/button'
-import { RADIUS_LIMITS } from '@/config/map'
-import { formatDistance, formatHectares } from '@/lib/format'
+import { formatHectares } from '@/lib/format'
 import {
   ArrowUturnLeftIcon,
   CheckIcon,
   CursorArrowRaysIcon,
   PencilIcon,
-  ViewfinderCircleIcon,
+  TrashIcon,
   XMarkIcon,
 } from '@heroicons/react/16/solid'
 import clsx from 'clsx'
@@ -16,7 +15,6 @@ import type { DrawingTool } from '../../model/drawing'
 const TOOLS: readonly { value: DrawingTool; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { value: 'select', label: 'Select', icon: CursorArrowRaysIcon },
   { value: 'polygon', label: 'Outline', icon: PencilIcon },
-  { value: 'radius', label: 'Circle', icon: ViewfinderCircleIcon },
 ]
 
 type DrawingToolbarProps = {
@@ -25,14 +23,13 @@ type DrawingToolbarProps = {
   vertexCount: number
   isPolygonClosed: boolean
   canClosePolygon: boolean
-  radiusMeters: number
   /** Area of the finished shape, or null while it is still being drawn. */
   areaHectares: number | null
   isEditing: boolean
   canSave: boolean
   onUndo: () => void
   onFinish: () => void
-  onRadiusChange: (radiusMeters: number) => void
+  onClear: () => void
   onSave: () => void
   onCancel: () => void
 }
@@ -46,13 +43,12 @@ export function DrawingToolbar({
   vertexCount,
   isPolygonClosed,
   canClosePolygon,
-  radiusMeters,
   areaHectares,
   isEditing,
   canSave,
   onUndo,
   onFinish,
-  onRadiusChange,
+  onClear,
   onSave,
   onCancel,
 }: DrawingToolbarProps) {
@@ -99,29 +95,14 @@ export function DrawingToolbar({
         </>
       )}
 
-      {tool === 'radius' && (
-        <>
-          {DIVIDER}
-          <label className="flex shrink-0 items-center gap-2 px-1 text-xs/5 text-zinc-500 dark:text-zinc-400">
-            Radius
-            <input
-              type="range"
-              min={RADIUS_LIMITS.min}
-              max={RADIUS_LIMITS.max}
-              step={RADIUS_LIMITS.step}
-              value={radiusMeters}
-              onChange={(event) => onRadiusChange(Number(event.target.value))}
-              className="w-28 accent-zinc-950 sm:w-36 dark:accent-white"
-            />
-            <span className="w-14 font-medium text-zinc-950 tabular-nums dark:text-white">
-              {formatDistance(radiusMeters)}
-            </span>
-          </label>
-        </>
-      )}
-
       {isDrawing && (
         <>
+          {vertexCount > 0 && (
+            <Button plain onClick={onClear} className="shrink-0">
+              <TrashIcon data-slot="icon" />
+              Clear
+            </Button>
+          )}
           {DIVIDER}
           {areaHectares !== null && (
             <span className="shrink-0 px-1 text-sm/6 font-semibold text-zinc-950 tabular-nums dark:text-white">

@@ -1,0 +1,37 @@
+flowchart LR
+  subgraph DATA["Дані"]
+    PM["NASA POWER, помісячно<br/>з 2001 року до сьогодні<br/>температура, опади, вологість ґрунту"]
+    PC["NASA POWER, кліматичні норми 2001–2025<br/>тепло, морози, опади, вологість ґрунту,<br/>вологість повітря, сонце, висота"]
+    CDL["USDA Cropland Data Layer<br/>що росло на полі, з супутника, 2016–2024"]
+    SOIL["USDA SSURGO<br/>кислотність ґрунту"]
+    ECO["Каталог 17 культур<br/>агрономічні вимоги FAO ECOCROP"]
+  end
+
+  subgraph M1["Модель 1: сезонний прогноз"]
+    RF["Random Forest на відхиленнях від норми<br/>окремо на кожен місяць уперед"]
+    TER["Ймовірності за третинами<br/>на 3 місяці"]
+  end
+
+  subgraph M2["Модель 2: сівозміна, США"]
+    HGB["Gradient Boosting<br/>передбачає наступну культуру"]
+  end
+
+  subgraph R["Правила, без навчання"]
+    SUIT["Придатність культури<br/>за кліматом і ґрунтом"]
+    ROT["Штрафи й бонуси сівозміни"]
+  end
+
+  SCORE["Рейтинг культур<br/>і планів сівозміни"]
+
+  PM --> RF --> TER --> OUT1["Climate: шанси<br/>суше / норма / вологіше"]
+  PC --> HGB
+  CDL --> HGB
+  PC --> SUIT
+  SOIL --> SUIT
+  ECO --> SUIT
+  ECO --> ROT
+  CDL --> ROT
+  HGB --> SCORE
+  SUIT --> SCORE
+  ROT --> SCORE
+  SCORE --> OUT2["Recommendations"]

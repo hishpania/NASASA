@@ -2,22 +2,17 @@ import { Link } from '@/components/catalyst/link'
 import { Text } from '@/components/catalyst/text'
 import { Notice } from '@/components/ui/Notice'
 import { ChartCard, SERIES_COLORS, StatTile } from '@/components/charts'
-import { useFields, type Field, type LatLng } from '@/features/fields'
-import { useState } from 'react'
+import { useFields } from '@/features/fields'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useClimateData } from '../hooks/useClimateData'
-import { summarize } from '../model/climate'
-import { DailyBarChart } from './DailyBarChart'
-import { DailyLineChart } from './DailyLineChart'
+import { useFieldForecast } from '../hooks/useFieldForecast'
+import { summarize, type ClimateDay } from '../model/climate'
+import type { ClimateForecast, ForecastSeriesId } from '../model/forecast'
+import { buildTimeline } from '../model/timeline'
+import { NoFieldState } from '@/components/ui/NoFieldState'
+import { SeasonOutlook } from './SeasonOutlook'
 import { SegmentedControl } from './SegmentedControl'
-import { TemperatureChart } from './TemperatureChart'
-
-type Location = { id: string; name: string; point: LatLng }
-
-const SAMPLE_LOCATION: Location = {
-  id: 'sample',
-  name: 'Sample: Kansas, USA',
-  point: { lat: 38.5, lng: -98 },
-}
+import { TimelineChart } from './TimelineChart'
 
 const PERIODS = [
   { value: 30, label: '30 days' },
@@ -27,55 +22,117 @@ const PERIODS = [
 
 type Period = (typeof PERIODS)[number]['value']
 
-function toLocation(field: Field): Location {
-  return { id: field.id, name: field.name, point: field.shape.center }
+const OUTLOOK_TITLES: Record<ForecastSeriesId, string> = {
+  temperature: 'Temperature',
+  precipitation: 'Precipitation',
+  soil_wetness: 'Soil wetness',
 }
 
 function formatNumber(value: number | null, digits: number): string {
   return value === null ? '—' : value.toFixed(digits)
 }
 
+function Placeholder({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-xl bg-white p-6 text-sm/6 text-zinc-500 ring-1 ring-zinc-950/5 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-white/10">
+      {children}
+    </div>
+  )
+}
+
+function SkillNote({ forecast }: { forecast: ClimateForecast }) {
+  const skilled = forecast.series
+    .filter((series) => series.season.method === 'model')
+    .map((series) => OUTLOOK_TITLES[series.id].toLowerCase())
+  return (
+    <Text>
+      The odds come from a model trained on 25 years of monthly NASA POWER data and checked on the last two years. It
+      only moves the odds away from an even third each where it beat the 25-year normal
+      {skilled.length > 0 ? `, which it did for ${skilled.join(', ')}` : ', which it did not do this time'}. Treat them
+      as a tilt, not a promise.
+    </Text>
+  )
+}
+
+function normalsOf(forecast: ClimateForecast | null, id: ForecastSeriesId) {
+  return forecast?.series.find((series) => series.id === id)?.history
+}
+
 export function ClimateView() {
   const { current, status } = useFields()
   const [period, setPeriod] = useState<Period>(90)
 
-  // Without a field yet, show a sample so the page still explains itself.
-  const location = current ? toLocation(current) : SAMPLE_LOCATION
-  const hasLocation = status !== 'loading'
-  const climate = useClimateData(hasLocation ? location.point : null, period)
-  const series = climate.status === 'loaded' ? climate.series : null
-  const summary = series ? summarize(series.days) : null
+  const climate = useClimateData(current?.shape.center ?? null, period)
+  const outlook = useFieldForecast(current?.id ?? null)
+  const days = climate.status === 'loaded' ? climate.series.days : null
+  const forecast = outlook.status === 'loaded' ? outlook.forecast : null
+  const summary = days ? summarize(days) : null
+
+  const timelines = useMemo(() => {
+    if (!days) {
+      return null
+    }
+    const daily = (value: (day: ClimateDay) => number | null) => buildTimeline(days, { value })
+    return {
+      temperature: buildTimeline(days, {
+        value: (day) => day.temperatureMean,
+        range: (day) => day.temperatureRange,
+        normals: normalsOf(forecast, 'temperature'),
+      }),
+      precipitation: buildTimeline(days, {
+        value: (day) => day.precipitation,
+        normals: normalsOf(forecast, 'precipitation'),
+        perDay: true,
+      }),
+      soilWetness: buildTimeline(days, {
+        value: (day) => day.soilWetness,
+        normals: normalsOf(forecast, 'soil_wetness'),
+      }),
+      solarRadiation: daily((day) => day.solarRadiation),
+      humidity: daily((day) => day.humidity),
+    }
+  }, [days, forecast])
+
+  if (status === 'loading') {
+    return <Placeholder>Loading your fields…</Placeholder>
+  }
+
+  if (current === null) {
+    return (
+      <NoFieldState
+        title="Add a field to see its climate"
+        description="Outline your field on the map and we will show its temperature, rain and soil moisture from NASA POWER, with the odds for the season ahead."
+      />
+    )
+  }
+
+  const forecastNote =
+    outlook.status === 'failed'
+      ? ` The forecast is unavailable: ${outlook.message}`
+      : outlook.status === 'loaded'
+        ? ' The dotted line on the charts is the 25-year normal.'
+        : ' The outlook is being trained on 25 years of monthly data…'
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        {current === null && hasLocation ? (
-          <Text>
-            Showing a sample place. <Link href="/">Outline your territory</Link> to see its own data.
-          </Text>
-        ) : (
-          <span />
-        )}
+        <Text>
+          Daily data from{' '}
+          <Link href="https://power.larc.nasa.gov/" target="_blank" rel="noreferrer">
+            NASA POWER
+          </Link>{' '}
+          for {current.name}. The newest days can lag by a few days.{forecastNote}
+        </Text>
         <SegmentedControl label="Period" options={PERIODS} value={period} onChange={setPeriod} />
       </div>
-
-      <Text>
-        Daily agro-climate data from{' '}
-        <Link href="https://power.larc.nasa.gov/" target="_blank" rel="noreferrer">
-          NASA POWER
-        </Link>{' '}
-        for {location.name}. The newest days can lag by a few days.
-      </Text>
 
       {climate.status === 'failed' && <Notice>Could not load NASA POWER data: {climate.message}</Notice>}
 
       {(climate.status === 'loading' || climate.status === 'idle') && (
-        <div className="rounded-xl bg-white p-6 text-sm/6 text-zinc-500 ring-1 ring-zinc-950/5 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-white/10">
-          Loading NASA POWER data…
-        </div>
+        <Placeholder>Loading NASA POWER data…</Placeholder>
       )}
 
-      {series && summary && (
+      {timelines && summary && (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatTile
@@ -104,27 +161,39 @@ export function ClimateView() {
             />
           </div>
 
+          {forecast && <SeasonOutlook forecast={forecast} />}
+
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <ChartCard
               title="Air temperature"
-              description="Daily mean at 2 m, the band spans the daily minimum and maximum."
+              description="Daily mean at 2 m with the daily min–max band, against the 25-year normal."
               className="xl:col-span-2"
             >
-              <TemperatureChart days={series.days} />
+              <TimelineChart
+                timeline={timelines.temperature}
+                name="Mean"
+                formatValue={(value) => `${value.toFixed(1)} °C`}
+                formatTick={(value) => `${value}°`}
+              />
             </ChartCard>
-            <ChartCard title="Precipitation" description="Daily precipitation, bias-corrected, in millimeters.">
-              <DailyBarChart
-                days={series.days}
-                dataKey="precipitation"
+            <ChartCard
+              title="Precipitation"
+              description="Daily precipitation, bias-corrected. The dotted line is the normal per day of each month."
+            >
+              <TimelineChart
+                timeline={timelines.precipitation}
                 name="Precipitation"
-                formatValue={(value) => `${value.toFixed(1)} mm`}
+                kind="bar"
+                color={SERIES_COLORS[0]}
+                domain={[0, 'auto']}
+                formatValue={(value) => `${value.toFixed(1)} mm/day`}
               />
             </ChartCard>
             <ChartCard title="Root zone soil wetness" description="Share of soil pores filled with water, 0 to 100 %.">
-              <DailyLineChart
-                days={series.days}
-                dataKey="soilWetness"
+              <TimelineChart
+                timeline={timelines.soilWetness}
                 name="Soil wetness"
+                color={SERIES_COLORS[2]}
                 domain={[0, 1]}
                 formatValue={(value) => `${Math.round(value * 100)} %`}
                 formatTick={(value) => `${Math.round(value * 100)}%`}
@@ -134,25 +203,25 @@ export function ClimateView() {
               title="Solar radiation"
               description="All-sky shortwave irradiance at the surface, MJ/m² per day."
             >
-              <DailyLineChart
-                days={series.days}
-                dataKey="solarRadiation"
+              <TimelineChart
+                timeline={timelines.solarRadiation}
                 name="Solar radiation"
                 color={SERIES_COLORS[1]}
                 formatValue={(value) => `${value.toFixed(1)} MJ/m²`}
               />
             </ChartCard>
             <ChartCard title="Relative humidity" description="Daily mean at 2 m above the surface.">
-              <DailyLineChart
-                days={series.days}
-                dataKey="humidity"
+              <TimelineChart
+                timeline={timelines.humidity}
                 name="Humidity"
                 color={SERIES_COLORS[0]}
                 domain={[0, 100]}
-                formatValue={(value) => `${value} %`}
+                formatValue={(value) => `${Math.round(value)} %`}
               />
             </ChartCard>
           </div>
+
+          {forecast && <SkillNote forecast={forecast} />}
         </>
       )}
     </div>

@@ -1,0 +1,45 @@
+flowchart TB
+  SRC["NASA POWER monthly, ~25 years for the field point<br/>temperature, monthly rain, soil wetness<br/>gaps filled between neighbouring months"]
+
+  SRC --> SPLIT{"Split by time"}
+  SPLIT -->|"all but the last 2 years"| TRAIN["Training"]
+  SPLIT -->|"last 2 years"| HOLD["Check"]
+
+  subgraph FE["Features"]
+    NORM["Normal for each calendar month<br/>computed on training years only,<br/>so the check stays unseen"]
+    ANOM["Target: departure from normal<br/>for all 3 indicators at once"]
+    X["Input: departures over the last 3 months,<br/>normal of the target month, time of year"]
+  end
+  TRAIN --> NORM --> ANOM --> X
+
+  subgraph FIT["Training per month ahead, 1…12"]
+    RFH["Random Forest"]
+    EVAL["Model error on the check<br/>vs error of a plain «it will be normal»"]
+    PICK{"Model beats the normal?<br/>per indicator and month"}
+  end
+  X --> RFH --> EVAL --> PICK
+  HOLD --> EVAL
+
+  REFIT["Refit on the full history<br/>and forecast from the last month"]
+  PICK -->|yes| REFIT
+  PICK -->|no| ZERO["Forecast = normal"]
+
+  subgraph SEASON["Season: 3 months from the current one"]
+    AGG["Rain total,<br/>mean temperature and wetness"]
+    CLIM["Same 3 months over ~25 years<br/>→ bounds of thirds: dry, typical, wet"]
+    SIG["Spread: variability of past seasons,<br/>narrowed as much as the model<br/>beats the normal"]
+    P["Probability the season lands<br/>in the lower, middle or upper third"]
+    FLAT["Model not trusted → a third each"]
+  end
+  REFIT --> AGG
+  ZERO --> AGG
+  ANOM --> CLIM
+  EVAL --> SIG
+  CLIM --> SIG
+  AGG --> P
+  CLIM --> P
+  SIG --> P
+  ZERO --> FLAT
+
+  P --> OUT["UI: 3 probability cards<br/>+ the normal range for this season<br/>+ where the model beat the normal"]
+  FLAT --> OUT

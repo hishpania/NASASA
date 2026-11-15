@@ -28,18 +28,11 @@ export const BASE_LAYERS: Record<BaseLayerId, BaseLayerConfig> = {
 }
 
 export const DEFAULT_VIEW: { center: LatLng; zoom: number } = {
-  center: { lat: 49.0, lng: 31.4 },
-  zoom: 6,
+  center: { lat: 39.5, lng: -98.35 },
+  zoom: 4,
 }
 
 export const FOCUS_ZOOM = 15
-
-export const RADIUS_LIMITS = {
-  min: 100,
-  max: 20_000,
-  step: 100,
-  initial: 1_000,
-} as const
 
 export const SEARCH_SETTINGS = {
   minQueryLength: 3,

@@ -1,6 +1,5 @@
 import { Badge } from '@/components/catalyst/badge'
 import { Subheading } from '@/components/catalyst/heading'
-import { Link } from '@/components/catalyst/link'
 import { Text } from '@/components/catalyst/text'
 import { Notice } from '@/components/ui/Notice'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
@@ -27,6 +26,7 @@ import { NoteList } from './NoteList'
 import { OptionPicker, type PickerOption } from './OptionPicker'
 import { RecommendationCard } from './RecommendationCard'
 import { StrategyCard } from './StrategyCard'
+import { NoFieldState } from '@/components/ui/NoFieldState'
 
 const WATER_OPTIONS = [
   { value: 'rainfed', label: 'Rainfed' },
@@ -100,11 +100,10 @@ export function AdviceView() {
   }
   if (field === null) {
     return (
-      <div className={PANEL}>
-        <Text>
-          Recommendations are built per field. <Link href="/">Add a field on the map</Link> to get started.
-        </Text>
-      </div>
+      <NoFieldState
+        title="Add a field to get recommendations"
+        description="Recommendations are built per field. Outline yours on the map to see which crops fit it and three-year rotation plans."
+      />
     )
   }
 
@@ -233,10 +232,10 @@ function AdviceContent({ advice, priority, onPriorityChange, strategies, emphasi
             label="Warm season"
             value={String(climate.growingDays)}
             unit="days a year"
-            hint="Mean temperature above 10 °C"
+            hint="Mean temperature of 5 °C or more"
             explanation={
               <div className="space-y-2">
-                <p>Days with a mean temperature above 10 °C, the base for most field crops.</p>
+                <p>Days with a mean temperature of 5 °C or more, when field crops can grow.</p>
                 <p>
                   Heat sum: <strong className="font-semibold">{Math.round(climate.growingDegreeDays)} °C·d</strong>.
                   Growing degree days above 10 °C. Each crop needs a set heat sum to reach maturity; a higher total

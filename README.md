@@ -1,52 +1,35 @@
-# NASASA
+# Peter67's Farm
 
-Agro field selection platform: a React map client, a .NET Clean Architecture API on PostgreSQL, and standalone ML models.
+**Outline your field on a satellite map and find out what to plant there.**
 
-## Structure
+👉 **[farm.peter67.nasa.kpi.yaroslavyushchenko.com](https://farm.peter67.nasa.kpi.yaroslavyushchenko.com/)**
 
-| Folder | Contents |
-| --- | --- |
-| `Backend/` | .NET 10 solution based on [Clean Architecture](https://github.com/jasontaylordev/CleanArchitecture): `Domain`, `Application`, `Infrastructure`, `Web` (minimal API), `AppHost` (Aspire orchestration) |
-| `Frontend/` | React 19 + Vite + Tailwind (Catalyst UI) field selector with Leaflet maps |
-| `Model/` | ML models, each one a separate program. [`crop_advisor`](Model/crop_advisor/README.md) is the Python service behind crop advice |
+Try it with the demo account: `demo@example.com` / `123456789` (it is filled in on the sign-in page).
 
-## Run everything
+![Fields on the satellite map](docs/screenshots/fields.webp)
 
-Requirements: .NET SDK 10, Node 22+, Docker, [uv](https://docs.astral.sh/uv/) (runs the Python crop advisor).
+## What it does
+
+- **Draw your field.** Find your land by search or your location, then click around its edges on the satellite map, or mark it as a circle.
+- **See what grew there.** For US fields the app reads past seasons from satellite crop records, so you see what was planted in recent years.
+- **Get crop recommendations.** Crops are ranked for your field's climate, rainfall and soil, with sowing and harvest windows.
+- **Plan rotations.** Three-year rotation plans, ranked by what matters to you: saving water, building soil or stopping erosion.
+
+Climate data comes from NASA POWER, past crops from USDA CropScape and soil from USDA SSURGO.
+
+![Crop recommendations for a field](docs/screenshots/advice.webp)
+
+<p align="center">
+  <img src="docs/screenshots/signin.webp" alt="Sign-in page" width="720" />
+</p>
+
+## Run it locally
+
+You need .NET SDK 10, Node 22+, Docker and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 cd Frontend && npm install && cd ..
 dotnet run --project Backend/src/AppHost
 ```
 
-The Aspire dashboard opens with links to:
-
-- `webfrontend` — the React app
-- `webapi` — the API with Scalar docs at `/scalar`
-- `cropadvisor` — the crop advisor (FastAPI) with docs at `/docs`
-- `dbserver` — PostgreSQL with pgAdmin
-
-The development database is seeded with `demo@neosphere.local` / `demo1234`.
-
-## API
-
-| Method | Route | Auth |
-| --- | --- | --- |
-| `POST` | `/api/Auth/register` | — |
-| `POST` | `/api/Auth/login` | — |
-| `GET` | `/api/Auth/me` | Bearer JWT |
-| `GET` | `/api/Fields` | Bearer JWT |
-| `POST` | `/api/Fields` | Bearer JWT |
-| `PUT` | `/api/Fields/{id}` | Bearer JWT |
-| `DELETE` | `/api/Fields/{id}` | Bearer JWT |
-| `GET` | `/api/Fields/{id}/recommendations` | Bearer JWT |
-
-## Database
-
-Migrations live in `Backend/src/Infrastructure/Data/Migrations` and are applied on startup in Development.
-
-```bash
-cd Backend
-dotnet ef migrations add <Name> --project src/Infrastructure --startup-project src/Web --output-dir Data/Migrations
-```
-
+The Aspire dashboard opens with a link to the app. The local database starts with the same demo account.
