@@ -22,6 +22,7 @@ async def main():
 
     async with ag.NLCD() as nlcd:                        # Own session.
         cover = await nlcd.land_cover(42.0, -93.6)
+        field = await nlcd.land_cover_area((-93.62, 42.0, -93.6, 42.01))
 
 asyncio.run(main())                                      # Jupyter: await main()
 ```
@@ -34,6 +35,8 @@ asyncio.run(main())                                      # Jupyter: await main()
 ## Conventions
 
 - Coordinates are WGS84 decimal degrees: `lat, lon`; `bbox = (west, south, east, north)`.
+- Every point accessor `name(lat, lon, ...)` has an area twin `name_area(bbox, ...)` (`point` → `area`) taking mostly the same
+  other arguments. Area results have `lat, lon` columns (pixel or grid-cell centers), except aggregates (`OpenET.area`).
 - Dates accept anything `pandas.Timestamp` parses (`'2024-06-01'`, `datetime`, ...).
 - Units and metadata, when the API provides them, are in `df.attrs`.
 - Invalid arguments raise `ValueError`. API failures raise `ag.DatasetError`. Missing credentials raise `PermissionError`.
@@ -61,11 +64,11 @@ Credentials come from environment variables or `Class.login(...)`, which also ap
 
 - HTTPS only. Credentials are sent only to the dataset's own host, and are stripped on redirects to other hosts.
 - Error messages omit query strings, which may hold API keys.
-- Responses are capped at `MAX_BYTES` (200 MB). Each host gets at most `CONCURRENCY` (4) simultaneous requests.
+- Responses are capped at `MAX_BYTES` (200 MB), rasters at `MAX_PIXELS` (50 M). Each host gets at most `CONCURRENCY` (4) simultaneous requests.
 - GET requests are retried `RETRIES` (3) times, with backoff, on timeouts and HTTP 429/502/503/504.
 - Coordinates, identifiers and URLs are validated. SQL values are quoted.
 - Download and redirect URLs taken from responses must stay on the expected hosts.
-- No pickle, `eval` or `exec`. Data is parsed only as JSON, CSV or plain text.
+- No pickle, `eval` or `exec`. Data is parsed only as JSON, CSV, plain text or GeoTIFF (`tifffile`).
 
 All of these limits are class attributes, so subclasses can override them (e.g. `TIMEOUT`).
 
@@ -75,44 +78,53 @@ All of these limits are class attributes, so subclasses can override them (e.g. 
 
 All have `granules(bbox, start, end, short_name=None, limit=2000)`, which lists data files (title, time range, size, URL).
 
-| Class | Point accessor | Default product / layers |
+| Class | Accessors | Default product / layers |
 |---|---|---|
-| `SMAP` | `point(lat, lon, start, end, layers=None, product=None)`, `freeze_thaw(lat, lon, start, end)` | SPL3SMP_E.006 AM/PM soil moisture; SPL3FTP.004 |
-| `Landsat` | `point(...)` | HLSL30_VI.020: NDVI, EVI, NDMI |
-| `MODIS` | `point(...)` | MOD13Q1.061: NDVI, EVI (250 m, 16-day) |
-| `VIIRS` | `point(...)` | VNP13A1.002: NDVI, EVI (500 m, 16-day) |
-| `ECOSTRESS` | `point(...)`, `evapotranspiration(lat, lon, start, end)` | ECO_L2T_LSTE.002 LST; ECO_L3T_JET.002 ETdaily |
-| `GPM` (`IMERG`) | `timeseries(lat, lon, start, end, variable=None)` | GPM_3IMERGHH_07 precipitation |
-| `NLDAS` | `timeseries(...)` | NLDAS_FORA0125_H_2_0 Tair |
-| `GLDAS` | `timeseries(...)` | GLDAS_NOAH025_3H_2_1 SoilMoi0_10cm_inst |
+| `SMAP` | `point(lat, lon, start, end, layers=None, product=None)`, `area(bbox, ...)`, `freeze_thaw(lat, lon, start, end)`, `freeze_thaw_area(bbox, start, end)` | SPL3SMP_E.006 AM/PM soil moisture; SPL3FTP.004 |
+| `Landsat` | `point(...)`, `area(...)` | HLSL30_VI.020: NDVI, EVI, NDMI |
+| `MODIS` | `point(...)`, `area(...)` | MOD13Q1.061: NDVI, EVI (250 m, 16-day) |
+| `VIIRS` | `point(...)`, `area(...)` | VNP13A1.002: NDVI, EVI (500 m, 16-day) |
+| `ECOSTRESS` | `point(...)`, `area(...)`, `evapotranspiration(lat, lon, start, end)`, `evapotranspiration_area(bbox, start, end)` | ECO_L2T_LSTE.002 LST; ECO_L3T_JET.002 ETdaily |
+| `GPM` (`IMERG`) | `timeseries(lat, lon, start, end, variable=None)`, `timeseries_area(bbox, ...)` | GPM_3IMERGHH_07 precipitation (0.1°) |
+| `NLDAS` | `timeseries(...)`, `timeseries_area(...)` | NLDAS_FORA0125_H_2_0 Tair (0.125°) |
+| `GLDAS` | `timeseries(...)`, `timeseries_area(...)` | GLDAS_NOAH025_3H_2_1 SoilMoi0_10cm_inst (0.25°) |
 | `GEDI` | `footprints(bbox, start, end)` **bulk** | GEDI L4A V3 biomass |
 
-`point` runs an AppEEARS task, polled for up to `MAX_WAIT` (1 h); it can take minutes. `timeseries` uses the Giovanni Time Series API.
+`point` and `area` run an AppEEARS task, polled for up to `MAX_WAIT` (1 h); it can take minutes.
+`area` returns date, lat, lon and one column per layer, for every pixel (fill values dropped).
+`timeseries` uses the Giovanni Time Series API, which serves points only: `timeseries_area` requests each
+`RESOLUTION`-degree grid cell of the bbox, at most `MAX_POINTS` (256).
 
 ### Climate (`agdata.climate`)
 
 | Class | Methods |
 |---|---|
-| `NasaPower` | `point(lat, lon, start, end, parameters=None, resolution='daily')` (hourly, daily or monthly), `climatology(lat, lon, parameters=None)` |
+| `NasaPower` | `point(lat, lon, start, end, parameters=None, resolution='daily')` (hourly, daily or monthly), `climatology(lat, lon, parameters=None)`, `area(bbox, ...)` (daily or monthly), `climatology_area(bbox, ...)` |
 | `PRISM` | `daily(variable, start, end)`, `monthly(variable, start, end)`, `normals(variable)`: all **bulk** |
 | `CoCoRaHS` | `daily(state, start, end, county=None)` |
+
+`NasaPower` area methods use the regional API: grid nodes every 0.5° lat × 0.625° lon, bbox up to 10° per side,
+one request per parameter.
 
 ### Land, terrain, imagery (`agdata.land`, `agdata.arcgis`)
 
 | Class | Methods |
 |---|---|
 | `SRTM` | `elevation(bbox, dem='SRTMGL1')`: lat, lon, elevation, slope |
-| `NLCD` | `land_cover(lat, lon, years=NLCD.YEARS)`: code, class per year |
-| `GAEZ` | `suitability(lat, lon, crop, rcp='Historical')`, `identify(lat, lon, where=None, layer='res05')` |
-| `LANDFIRE` | `identify(lat, lon, layer='Landfire_LF2024/LF2024_EVT_CONUS')` |
-| `NAIP` | `pixels(lat, lon)`: RGB, NIR, NDVI per acquisition |
+| `NLCD` | `land_cover(lat, lon, years=NLCD.YEARS)`: code, class per year; `land_cover_area(bbox, years=2021)`: every 30 m pixel |
+| `GAEZ` | `suitability(lat, lon, crop, rcp='Historical')`, `identify(lat, lon, where=None, layer='res05')`, `suitability_area(bbox, crop, rcp, samples=1024)`, `identify_area(bbox, where=None, layer=None, samples=1024)` |
+| `LANDFIRE` | `identify(lat, lon, layer='Landfire_LF2024/LF2024_EVT_CONUS')`, `identify_area(bbox, ...)` |
+| `NAIP` | `pixels(lat, lon)`: RGB, NIR, NDVI per acquisition; `pixels_area(bbox, samples=1024)` |
+
+ArcGIS `identify_area` samples a regular grid (`samples` ≤ 1024) on each catalog raster intersecting the bbox and matching
+`where`, at most `MAX_RASTERS` (250): narrow `where` (e.g. `sub_theme_name='Suitability Index'` for GAEZ) when needed.
 
 ### Water (`agdata.water`)
 
 | Class | Methods |
 |---|---|
-| `NWIS` | `sites(bbox, site_type=None, **filters)`, `daily(site, start, end, parameter='00060')`, `items(collection, **params)` |
-| `OpenET` | `point(lat, lon, start, end, interval='monthly', model='Ensemble', variable='ET')` |
+| `NWIS` | `sites(bbox, site_type=None, **filters)`, `daily(site, start, end, parameter='00060')`, `daily_area(bbox, start, end, parameter='00060')`: all sites, `items(collection, **params)` |
+| `OpenET` | `point(lat, lon, start, end, interval='monthly', model='Ensemble', variable='ET')`, `area(bbox, ..., reducer='mean')`: one series aggregated over the bbox |
 
 ### USDA (`agdata.usda`)
 
@@ -120,8 +132,8 @@ All have `granules(bbox, start, end, short_name=None, limit=2000)`, which lists 
 |---|---|
 | `QuickStats` | `query(**filters)`, `values(param, **filters)` |
 | `MarketNews` | `reports()`, `report(slug_id, start=None, end=None, **filters)` |
-| `CropScape` (`CDL`) | `crops(lat, lon, years)`, `stats(year, fips=None, bbox=None)` |
-| `SSURGO`, `STATSGO2`, `WebSoilSurvey` | `properties(lat, lon)`, `ratings(lat, lon, rule=None)`, `query(sql)` |
+| `CropScape` (`CDL`) | `crops(lat, lon, years)`, `crops_area(bbox, years)`: CDL code of every 30 m pixel, `stats(year, fips=None, bbox=None)` |
+| `SSURGO`, `STATSGO2`, `WebSoilSurvey` | `properties(lat, lon)`, `ratings(lat, lon, rule=None)`, `properties_area(bbox)`, `ratings_area(bbox, rule=None)`: all map units intersecting the bbox, `query(sql)` |
 | `AgDataCommons` | `search(query)`, `files(dataset_id)`, `read(download_url, **read_csv_kwargs)` |
 
 ## Extending
@@ -156,4 +168,6 @@ class MyApi(ag.Dataset):
 Base classes: `Dataset` (any API), `Earthdata` (CMR granules), `AppEEARS` (point extraction),
 `Giovanni` (time series), `arcgis.ImageService` (ArcGIS ImageServer pixels),
 `usda.SoilDataAccess` (soil SQL).
-Request helpers: `_json`, `_text` and `_request` (bytes), each taking `(method, path, **aiohttp_kwargs)`.
+Request helpers: `_json`, `_text` and `_request` (bytes), each taking `(method, path, **aiohttp_kwargs)`, and
+`_raster` (GeoTIFF to lat, lon, value rows; also `bbox=` and `nodata=`).
+Geometry helpers in `agdata.base`: `check_bbox`, `ring(bbox)` (closed lon/lat outline), `grid(bbox, step)` (cell centers).

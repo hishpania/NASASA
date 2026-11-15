@@ -1,20 +1,30 @@
 """Core abstraction shared by all datasets."""
 
 import asyncio
+import functools
+import io
 import json
+import logging
+import math
 import os
 import re
 import weakref
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Iterable
 from urllib import parse
 
 import aiohttp
+import numpy as np
 import pandas as pd
+import pyproj
+import tifffile
 
 # (west, south, east, north) in decimal degrees.
 Bbox = tuple[float, float, float, float]
 # Keyword arguments carrying credentials: 'headers', 'params' and/or 'auth'.
 Auth = dict[str, Any]
+
+# WGS84 to CONUS Albers (EPSG:5070), the grid of NLCD and CDL.
+TO_ALBERS = pyproj.Transformer.from_crs(4326, 5070, always_xy=True)
 
 _TRANSIENT = frozenset({429, 502, 503, 504})
 _AUTH: dict[type, Auth] = {}  # Authorization cache, one entry per class.
@@ -25,6 +35,11 @@ _LOCKS: weakref.WeakKeyDictionary[
 _SLOTS: weakref.WeakKeyDictionary[
     asyncio.AbstractEventLoop, dict[str | None, asyncio.Semaphore]
 ] = weakref.WeakKeyDictionary()
+
+# tifffile warns on valid float GDAL_NODATA strings ('0.0') of integer
+# rasters; `_raster` reads that tag itself.
+logging.getLogger('tifffile').addFilter(
+    lambda record: 'GDAL_NODATA' not in record.getMessage())
 
 
 class DatasetError(RuntimeError):
@@ -48,6 +63,7 @@ class Dataset:
     CREDENTIALS_OPTIONAL: ClassVar[bool] = False
     TIMEOUT: ClassVar[float] = 120
     MAX_BYTES: ClassVar[int] = 200 * 2**20  # Largest accepted response.
+    MAX_PIXELS: ClassVar[int] = 50_000_000  # Largest accepted raster.
     CONCURRENCY: ClassVar[int] = 4  # Simultaneous requests per host.
     RETRIES: ClassVar[int] = 3  # GET retries on transient HTTP errors.
 
@@ -140,14 +156,14 @@ class Dataset:
 
     async def _send(self, method, url, public, kwargs) -> tuple[int, bytes]:
         auth = {} if public else await self._auth()
-        timeout = aiohttp.ClientTimeout(total=self.TIMEOUT)
+        kwargs = {'timeout': aiohttp.ClientTimeout(total=self.TIMEOUT),
+                  **_merge(kwargs, auth)}
         slots = _SLOTS.setdefault(asyncio.get_running_loop(), {})
         async with slots.setdefault(_host(url),
                                     asyncio.Semaphore(self.CONCURRENCY)):
             try:
-                async with self._session().request(
-                        method, url, timeout=timeout,
-                        **_merge(kwargs, auth)) as resp:
+                async with self._session().request(method, url,
+                                                   **kwargs) as resp:
                     body = bytearray()
                     async for chunk in resp.content.iter_chunked(2**16):
                         body += chunk
@@ -172,6 +188,51 @@ class Dataset:
             raise DatasetError(f'{type(self).__name__}: not JSON: '
                                f'{body[:200].decode(errors="replace")}'
                                ) from error
+
+    async def _raster(self, method: str, path: str = '', *,
+                      bbox: Bbox | None = None, nodata: Iterable[float] = (),
+                      **kwargs: Any) -> pd.DataFrame:
+        """Downloads a single-band, north-up GeoTIFF.
+
+        Args:
+            method: HTTP method.
+            path: As in `_request`.
+            bbox: Keeps only pixels centered in this (west, south, east,
+                north) box.
+            nodata: Values marking missing pixels, besides the file's own.
+            **kwargs: `_request` arguments.
+
+        Returns:
+            One row per valid pixel: lat, lon (pixel center) and value.
+        """
+        body = await self._request(method, path, **kwargs)
+        try:
+            with tifffile.TiffFile(io.BytesIO(body)) as tif:
+                page = tif.pages.first
+                if len(page.shape) != 2:
+                    raise DatasetError(f'Not a single-band raster: '
+                                       f'{page.shape}.')
+                if math.prod(page.shape) > self.MAX_PIXELS:
+                    raise DatasetError(f'Raster over {self.MAX_PIXELS} px.')
+                geo, pixels = page.geotiff_tags or {}, page.asarray()
+                gdal = page.tags.get('GDAL_NODATA')
+        except (tifffile.TiffFileError, ValueError, KeyError) as error:
+            raise DatasetError(f'{type(self).__name__}: unreadable GeoTIFF: '
+                               f'{error}') from error
+        missing = [*nodata, *([float(gdal.value)] if gdal else [])]
+        valid = ~np.isin(pixels, missing)
+        if pixels.dtype.kind == 'f':
+            valid &= ~np.isnan(pixels)
+        rows, cols = np.nonzero(valid)
+        x0, dx, y0, dy = _georeference(geo)
+        lon, lat = _to_wgs84(_epsg(geo)).transform(x0 + cols * dx,
+                                                   y0 + rows * dy)
+        frame = pd.DataFrame({'lat': lat, 'lon': lon, 'value': pixels[valid]})
+        if bbox is not None:
+            west, south, east, north = check_bbox(bbox)
+            frame = frame[frame.lat.between(south, north)
+                          & frame.lon.between(west, east)]
+        return frame.reset_index(drop=True)
 
 
 def check_point(lat: Any, lon: Any) -> tuple[float, float]:
@@ -208,6 +269,29 @@ def check_url(url: str, hosts: set[str] | None = None) -> str:
     return url
 
 
+def ring(bbox: Any) -> list[list[float]]:
+    """Returns the closed (lon, lat) outline of a bbox, counterclockwise."""
+    west, south, east, north = check_bbox(bbox)
+    return [[west, south], [east, south], [east, north], [west, north],
+            [west, south]]
+
+
+def grid(bbox: Any, step: float) -> list[tuple[float, float]]:
+    """Returns (lat, lon) centers of `step`-degree cells covering a bbox.
+
+    Cells are aligned to multiples of `step`, as in most global grids.
+    """
+    west, south, east, north = check_bbox(bbox)
+
+    def centers(low: float, high: float) -> np.ndarray:
+        first = math.floor(low / step + 1e-9)
+        last = max(math.ceil(high / step - 1e-9), first + 1)
+        return np.round((np.arange(first, last) + 0.5) * step, 6)
+
+    return [(float(lat), float(lon)) for lat in centers(south, north)
+            for lon in centers(west, east)]
+
+
 def sql_text(value: Any) -> str:
     """Quotes a value as an SQL string literal."""
     return "'" + str(value).replace("'", "''") + "'"
@@ -231,6 +315,37 @@ def numeric(frame: pd.DataFrame) -> pd.DataFrame:
 def bulk(*_: Any, **__: Any) -> pd.DataFrame:
     """Placeholder for rate-limited endpoints that need bulk downloads."""
     raise NotImplementedError('Bulk, rate-limited download: not implemented.')
+
+
+def _georeference(geo: dict) -> tuple[float, float, float, float]:
+    """Returns x0, dx, y0, dy: first pixel center and pixel steps."""
+    if 'ModelTransformation' in geo:
+        matrix = np.asarray(geo['ModelTransformation'], float).reshape(4, 4)
+        if matrix[0, 1] or matrix[1, 0]:
+            raise DatasetError('Rotated rasters are not supported.')
+        dx, x0, dy, y0 = matrix[0, 0], matrix[0, 3], matrix[1, 1], matrix[1, 3]
+    elif 'ModelPixelScale' in geo and 'ModelTiepoint' in geo:
+        (dx, dy), (i, j, _, x, y) = (geo['ModelPixelScale'][:2],
+                                     geo['ModelTiepoint'][:5])
+        dy = -dy
+        x0, y0 = x - i * dx, y - j * dy
+    else:
+        raise DatasetError('GeoTIFF without georeference.')
+    # Unless the raster is PixelIsPoint (2), (x0, y0) is a pixel corner.
+    half = 0 if int(geo.get('GTRasterTypeGeoKey', 1)) == 2 else 0.5
+    return x0 + half * dx, dx, y0 + half * dy, dy
+
+
+def _epsg(geo: dict) -> int:
+    code = geo.get('ProjectedCSTypeGeoKey') or geo.get('GeographicTypeGeoKey')
+    if code is None or not 1024 <= int(code) < 32767:
+        raise DatasetError(f'GeoTIFF without EPSG code: {code}.')
+    return int(code)
+
+
+@functools.cache
+def _to_wgs84(epsg: int) -> pyproj.Transformer:
+    return pyproj.Transformer.from_crs(epsg, 4326, always_xy=True)
 
 
 def _merge(kwargs: dict[str, Any], auth: Auth) -> dict[str, Any]:

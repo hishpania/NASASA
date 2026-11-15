@@ -1,5 +1,6 @@
 """Climate datasets: NASA POWER, PRISM and CoCoRaHS."""
 
+import asyncio
 import io
 from typing import ClassVar, Sequence
 
@@ -20,6 +21,10 @@ class NasaPower(base.Dataset):
         'daily': ('%Y%m%d', '%Y%m%d'),
         'monthly': ('%Y', ''),
     }
+    # Regional requests: one parameter, 2 to 10 degrees per side; grid
+    # nodes every 0.5 deg latitude and 0.625 deg longitude.
+    _REGION: ClassVar[tuple[float, float]] = (2, 10)
+    _CELL: ClassVar[tuple[float, float]] = (0.5, 0.625)
 
     async def point(self, lat: float, lon: float, start, end,
                     parameters: Sequence[str] | None = None,
@@ -51,6 +56,72 @@ class NasaPower(base.Dataset):
         """Returns long-term monthly means (JAN..DEC, ANN) at a point."""
         return await self._fetch('climatology/point', lat, lon, parameters,
                                  {})
+
+    async def area(self, bbox: base.Bbox, start, end,
+                   parameters: Sequence[str] | None = None,
+                   resolution: str = 'daily') -> pd.DataFrame:
+        """Returns POWER parameters at each grid node of a bbox.
+
+        Args:
+            bbox: (west, south, east, north), up to 10 degrees per side.
+            start: Start date.
+            end: End date.
+            parameters: POWER parameter codes; defaults to `PARAMETERS`.
+            resolution: 'daily' or 'monthly' (month 13 = annual).
+
+        Returns:
+            Columns time, lat, lon and one per parameter; units in `.attrs`.
+        """
+        if resolution not in ('daily', 'monthly'):
+            raise ValueError("Resolution not in ['daily', 'monthly'].")
+        request_fmt, index_fmt = self._FORMATS[resolution]
+        return await self._regional(f'{resolution}/regional', bbox,
+                                    parameters, {
+            'start': base.date(start, request_fmt),
+            'end': base.date(end, request_fmt),
+        }, index_fmt)
+
+    async def climatology_area(self, bbox: base.Bbox,
+                               parameters: Sequence[str] | None = None
+                               ) -> pd.DataFrame:
+        """Returns long-term monthly means at each grid node of a bbox."""
+        return await self._regional('climatology/regional', bbox, parameters,
+                                    {})
+
+    async def _regional(self, path, bbox, parameters, params, index_fmt=''):
+        west, south, east, north = base.check_bbox(bbox)
+        smallest, largest = self._REGION
+        if max(east - west, north - south) > largest:
+            raise ValueError(f'POWER regions span at most {largest} degrees.')
+        # Small boxes are widened for the API, then cut back.
+        lat_min, lat_max = _widen(south, north, smallest, 90)
+        lon_min, lon_max = _widen(west, east, smallest, 180)
+        names = [base.check_name(p) for p in parameters or self.PARAMETERS]
+
+        async def fetch(name: str) -> tuple[pd.Series, str]:
+            data = await self._json('GET', path, params={
+                **params, 'latitude-min': lat_min, 'latitude-max': lat_max,
+                'longitude-min': lon_min, 'longitude-max': lon_max,
+                'community': 'AG', 'parameters': name, 'format': 'JSON'})
+            series = pd.concat({
+                tuple(f['geometry']['coordinates'][1::-1]):
+                    pd.Series(f['properties']['parameter'][name], dtype=float)
+                for f in data['features']}, names=['lat', 'lon', 'time'])
+            series = series.replace(data['header']['fill_value'], float('nan'))
+            return series.rename(name), data['parameters'][name]['units']
+
+        results = await asyncio.gather(*map(fetch, names))
+        frame = pd.concat([series for series, _ in results],
+                          axis=1).reset_index()
+        half_lat, half_lon = self._CELL[0] / 2, self._CELL[1] / 2
+        frame = frame[
+            frame.lat.between(south - half_lat, north + half_lat)
+            & frame.lon.between(west - half_lon, east + half_lon)]
+        if index_fmt:
+            frame['time'] = pd.to_datetime(frame['time'], format=index_fmt)
+        frame = frame[['time', 'lat', 'lon', *names]].reset_index(drop=True)
+        frame.attrs = {name: units for name, (_, units) in zip(names, results)}
+        return frame
 
     async def _fetch(self, path, lat, lon, parameters, params, index_fmt=''):
         lat, lon = base.check_point(lat, lon)
@@ -111,3 +182,12 @@ class CoCoRaHS(base.Dataset):
         return pd.read_csv(io.StringIO(await self._text('GET', params=params)),
                            skipinitialspace=True,
                            parse_dates=['ObservationDate'])
+
+
+def _widen(low: float, high: float, size: float,
+           limit: float) -> tuple[float, float]:
+    """Widens [low, high] to at least `size`, within [-limit, limit]."""
+    pad = max(0.0, size - (high - low)) / 2
+    low, high = low - pad, high + pad
+    shift = max(0.0, -limit - low) - max(0.0, high - limit)
+    return low + shift, high + shift

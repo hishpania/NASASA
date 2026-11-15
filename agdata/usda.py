@@ -8,11 +8,9 @@ from typing import ClassVar, Iterable
 
 import aiohttp
 import pandas as pd
-import pyproj
 
 from agdata import base
 
-_TO_ALBERS = pyproj.Transformer.from_crs(4326, 5070, always_xy=True)
 _FIGSHARE_HOSTS = {'api.figshare.com', 'figshare.com',
                    'ndownloader.figshare.com'}
 
@@ -89,12 +87,13 @@ class CropScape(base.Dataset):
 
     BASE_URL = 'https://nassgeodata.gmu.edu/axis2/services/CDLService/'
     TIMEOUT = 30  # Usually answers in seconds but stalls at times.
+    FILE_TIMEOUT: ClassVar[float] = 300  # Clipping rasters takes longer.
 
     async def crops(self, lat: float, lon: float,
                     years: int | Iterable[int]) -> pd.DataFrame:
         """Returns the crop at a point for each year (rotation history)."""
         lat, lon = base.check_point(lat, lon)
-        x, y = _TO_ALBERS.transform(lon, lat)
+        x, y = base.TO_ALBERS.transform(lon, lat)
         years = [int(years)] if isinstance(years, int) else map(int, years)
 
         async def crop(year: int) -> dict:
@@ -108,6 +107,29 @@ class CropScape(base.Dataset):
 
         return pd.DataFrame(await asyncio.gather(*map(crop, years)))
 
+    async def crops_area(self, bbox: base.Bbox,
+                         years: int | Iterable[int]) -> pd.DataFrame:
+        """Returns the CDL crop code of every 30 m pixel in a bbox.
+
+        Returns:
+            Columns year, lat, lon, value (CDL code, as in `crops`).
+        """
+        albers = ','.join(map(str, base.TO_ALBERS.transform_bounds(
+            *base.check_bbox(bbox))))
+        years = [int(years)] if isinstance(years, int) else map(int, years)
+        timeout = aiohttp.ClientTimeout(total=self.FILE_TIMEOUT)
+
+        async def crop(year: int) -> pd.DataFrame:
+            url = await self._return_url('GetCDLFile', timeout=timeout,
+                                         params={'year': year, 'bbox': albers})
+            frame = await self._raster('GET', url, bbox=bbox, nodata=[0],
+                                       timeout=timeout)
+            return frame.assign(year=year)
+
+        frame = pd.concat(await asyncio.gather(*map(crop, years)),
+                          ignore_index=True)
+        return frame[['year', 'lat', 'lon', 'value']]
+
     async def stats(self, year: int, fips: str | None = None,
                     bbox: base.Bbox | None = None) -> pd.DataFrame:
         """Returns crop acreage for a state/county FIPS code or a bbox."""
@@ -116,23 +138,28 @@ class CropScape(base.Dataset):
             params['fips'] = base.check_name(fips, r'\d{2}|\d{5}')
         else:
             west, south, east, north = base.check_bbox(bbox)
-            west, south = _TO_ALBERS.transform(west, south)
-            east, north = _TO_ALBERS.transform(east, north)
+            west, south = base.TO_ALBERS.transform(west, south)
+            east, north = base.TO_ALBERS.transform(east, north)
             params['bbox'] = f'{west},{south},{east},{north}'
-        xml = await self._text('GET', 'GetCDLStat', params=params)
+        url = await self._return_url('GetCDLStat', params=params)
+        return pd.read_csv(io.StringIO(await self._text('GET', url)),
+                           skipinitialspace=True)
+
+    async def _return_url(self, operation: str, **kwargs) -> str:
+        """Runs a CropScape operation that answers with a file URL."""
+        xml = await self._text('GET', operation, **kwargs)
         found = re.search(r'<returnURL>(.*?)</returnURL>', xml)
         if not found:
-            raise base.DatasetError(f'No CDL statistics: {xml[:200]}')
-        # Non-public request: only the CropScape host is accepted.
-        return pd.read_csv(io.StringIO(await self._text('GET', found[1])),
-                           skipinitialspace=True)
+            raise base.DatasetError(f'No CDL {operation} file: {xml[:200]}')
+        # Fetched as non-public requests: only the CropScape host is accepted.
+        return found[1]
 
 
 class SoilDataAccess(base.Dataset):
     """NRCS Soil Data Access: SQL over the US soil survey databases."""
 
     BASE_URL = 'https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest'
-    MUKEYS: ClassVar[str] = ''  # SQL selecting map unit keys at a point.
+    MUKEYS: ClassVar[str] = ''  # SQL selecting map unit keys in {wkt}.
 
     async def query(self, sql: str) -> pd.DataFrame:
         """Runs a read-only T-SQL query against Soil Data Access."""
@@ -148,17 +175,11 @@ class SoilDataAccess(base.Dataset):
         Includes texture, organic matter, available water capacity, Ksat,
         erodibility, pH, drainage class, hydrologic group and slope.
         """
-        return await self.query(f"""
-            SELECT mu.mukey, mu.muname, c.cokey, c.compname, c.comppct_r,
-                   c.slope_r, c.drainagecl, c.hydgrp, c.tfact, c.taxorder,
-                   h.hzname, h.hzdept_r, h.hzdepb_r, h.sandtotal_r,
-                   h.silttotal_r, h.claytotal_r, h.om_r, h.awc_r, h.ksat_r,
-                   h.kwfact, h.ph1to1h2o_r, h.dbthirdbar_r
-            FROM mapunit mu
-            JOIN component c ON c.mukey = mu.mukey
-            LEFT JOIN chorizon h ON h.cokey = c.cokey
-            WHERE mu.mukey IN ({self._mukeys(lat, lon)})
-            ORDER BY c.comppct_r DESC, h.hzdept_r""")
+        return await self._properties(_point(lat, lon))
+
+    async def properties_area(self, bbox: base.Bbox) -> pd.DataFrame:
+        """Returns `properties` of every map unit intersecting a bbox."""
+        return await self._properties(_polygon(bbox))
 
     async def ratings(self, lat: float, lon: float,
                       rule: str | None = None) -> pd.DataFrame:
@@ -169,6 +190,27 @@ class SoilDataAccess(base.Dataset):
             lon: Longitude.
             rule: Substring of the rule name to keep, e.g. 'Erosion'.
         """
+        return await self._ratings(_point(lat, lon), rule)
+
+    async def ratings_area(self, bbox: base.Bbox,
+                           rule: str | None = None) -> pd.DataFrame:
+        """Returns `ratings` of every map unit intersecting a bbox."""
+        return await self._ratings(_polygon(bbox), rule)
+
+    async def _properties(self, wkt: str) -> pd.DataFrame:
+        return await self.query(f"""
+            SELECT mu.mukey, mu.muname, c.cokey, c.compname, c.comppct_r,
+                   c.slope_r, c.drainagecl, c.hydgrp, c.tfact, c.taxorder,
+                   h.hzname, h.hzdept_r, h.hzdepb_r, h.sandtotal_r,
+                   h.silttotal_r, h.claytotal_r, h.om_r, h.awc_r, h.ksat_r,
+                   h.kwfact, h.ph1to1h2o_r, h.dbthirdbar_r
+            FROM mapunit mu
+            JOIN component c ON c.mukey = mu.mukey
+            LEFT JOIN chorizon h ON h.cokey = c.cokey
+            WHERE mu.mukey IN ({self.MUKEYS.format(wkt=wkt)})
+            ORDER BY mu.mukey, c.comppct_r DESC, h.hzdept_r""")
+
+    async def _ratings(self, wkt: str, rule: str | None) -> pd.DataFrame:
         where = (f'AND i.mrulename LIKE {base.sql_text(f"%{rule}%")}'
                  if rule else '')
         return await self.query(f"""
@@ -176,26 +218,22 @@ class SoilDataAccess(base.Dataset):
                    i.interphrc, i.interphr
             FROM component c
             JOIN cointerp i ON i.cokey = c.cokey AND i.ruledepth = 0
-            WHERE c.mukey IN ({self._mukeys(lat, lon)}) {where}
-            ORDER BY c.comppct_r DESC, i.mrulename""")
-
-    def _mukeys(self, lat: float, lon: float) -> str:
-        lat, lon = base.check_point(lat, lon)
-        return self.MUKEYS.format(lat=lat, lon=lon)
+            WHERE c.mukey IN ({self.MUKEYS.format(wkt=wkt)}) {where}
+            ORDER BY c.mukey, c.comppct_r DESC, i.mrulename""")
 
 
 class SSURGO(SoilDataAccess):
     """SSURGO field-scale soil survey (1:12,000 - 1:63,360)."""
 
     MUKEYS = ("SELECT * FROM SDA_Get_Mukey_from_intersection_with_WktWgs84"
-              "('point({lon} {lat})')")
+              "('{wkt}')")
 
 
 class STATSGO2(SoilDataAccess):
     """STATSGO2 regional-scale general soil map (1:250,000)."""
 
     MUKEYS = ("SELECT mukey FROM gsmmupolygon WHERE mupolygongeo.STIntersects("
-              "geometry::STPointFromText('POINT({lon} {lat})', 4326)) = 1")
+              "geometry::STGeomFromText('{wkt}', 4326)) = 1")
 
 
 class WebSoilSurvey(SSURGO):
@@ -227,3 +265,15 @@ class AgDataCommons(base.Dataset):
         url = base.check_url(download_url, _FIGSHARE_HOSTS)
         body = await self._request('GET', url, public=True)
         return pd.read_csv(io.BytesIO(body), **kwargs)
+
+
+def _point(lat: float, lon: float) -> str:
+    """Returns WKT of a point (validated, so safe inside SQL)."""
+    lat, lon = base.check_point(lat, lon)
+    return f'point({lon} {lat})'
+
+
+def _polygon(bbox: base.Bbox) -> str:
+    """Returns WKT of a bbox (validated, so safe inside SQL)."""
+    points = ', '.join(f'{lon} {lat}' for lon, lat in base.ring(bbox))
+    return f'polygon(({points}))'

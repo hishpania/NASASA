@@ -7,6 +7,8 @@ All classes share Earthdata Login credentials (`EARTHDATA_USERNAME`,
 
 import asyncio
 import io
+import itertools
+import re
 from typing import ClassVar, Sequence
 
 import aiohttp
@@ -57,7 +59,7 @@ class Earthdata(base.Dataset):
 
 
 class AppEEARS(Earthdata):
-    """Point time series extracted by NASA AppEEARS.
+    """Point time series and area rasters extracted by NASA AppEEARS.
 
     AppEEARS is asynchronous: a task is submitted and polled until done,
     which can take minutes.
@@ -89,16 +91,83 @@ class AppEEARS(Earthdata):
             product: AppEEARS product id; defaults to `PRODUCT`.
         """
         lat, lon = base.check_point(lat, lon)
+        task_id, files = await self._run(
+            'point', start, end, layers, product,
+            coordinates=[{'latitude': lat, 'longitude': lon}])
+        csv = next(f for f in files if f['file_name'].endswith('results.csv'))
+        body = await self._request(
+            'GET', f'bundle/{task_id}/{base.check_name(csv["file_id"])}')
+        return pd.read_csv(io.BytesIO(body), parse_dates=['Date'])
+
+    async def area(self, bbox: base.Bbox, start, end,
+                   layers: Sequence[str] | None = None,
+                   product: str | None = None) -> pd.DataFrame:
+        """Returns layer values of every pixel in a bbox.
+
+        Args:
+            bbox: (west, south, east, north).
+            start: Start date.
+            end: End date.
+            layers: Product layers; defaults to `LAYERS`.
+            product: AppEEARS product id; defaults to `PRODUCT`.
+
+        Returns:
+            One row per date and pixel: date, lat, lon and one column per
+            layer; units in `.attrs`.
+        """
+        product = base.check_name(product or self.PRODUCT)
+        layers = [base.check_name(l) for l in layers or self.LAYERS]
+        polygon = {'type': 'Polygon', 'coordinates': [base.ring(bbox)]}
+        task_id, files = await self._run(
+            'area', start, end, layers, product,
+            geo={'type': 'FeatureCollection', 'features': [
+                {'type': 'Feature', 'properties': {}, 'geometry': polygon}]},
+            output={'format': {'type': 'geotiff'},
+                    'projection': 'geographic'})
+        info = await self._json('GET', f'product/{product}', public=True)
+        rasters = []  # (layer, date, file id) of each GeoTIFF.
+        for f, layer in itertools.product(files, layers):
+            # Files are named <product>_<layer>_doy<YYYYDDD>_aid<n>.tif.
+            found = re.search(
+                rf'{re.escape(product)}_{re.escape(layer)}_doy(\d{{7}})_',
+                f['file_name'])
+            if found and f['file_name'].endswith('.tif'):
+                rasters.append((layer, pd.to_datetime(found[1], format='%Y%j'),
+                                base.check_name(f['file_id'])))
+        if not rasters:
+            raise base.DatasetError(f'AppEEARS task {task_id}: no GeoTIFFs.')
+
+        async def read(layer, date, file_id) -> pd.DataFrame:
+            # AppEEARS already masks pixels outside the bbox as fill values.
+            fill = info.get(layer, {}).get('FillValueAll') or []
+            frame = await self._raster('GET', f'bundle/{task_id}/{file_id}',
+                                       nodata=fill)
+            return frame.assign(date=date, layer=layer)
+
+        frame = pd.concat(await asyncio.gather(*(read(*r) for r in rasters)))
+        frame = frame.pivot_table(index=['date', 'lat', 'lon'],
+                                  columns='layer', values='value',
+                                  aggfunc='first').reset_index()
+        frame = frame[['date', 'lat', 'lon',
+                       *(l for l in layers if l in frame)]]
+        frame.columns.name = None
+        frame.attrs = {l: info.get(l, {}).get('Units') for l in layers}
+        return frame
+
+    async def _run(self, task_type: str, start, end,
+                   layers: Sequence[str] | None, product: str | None,
+                   **params) -> tuple[str, list[dict]]:
+        """Submits a task, waits until it is done and lists its files."""
         product = base.check_name(product or self.PRODUCT)
         task = {
-            'task_type': 'point',
+            'task_type': task_type,
             'task_name': f'agdata-{product}',
             'params': {
                 'dates': [{'startDate': base.date(start, '%m-%d-%Y'),
                            'endDate': base.date(end, '%m-%d-%Y')}],
                 'layers': [{'product': product, 'layer': base.check_name(l)}
                            for l in layers or self.LAYERS],
-                'coordinates': [{'latitude': lat, 'longitude': lon}],
+                **params,
             },
         }
         task_id = base.check_name(
@@ -112,11 +181,7 @@ class AppEEARS(Earthdata):
             if status == 'error' or loop.time() > deadline:
                 raise base.DatasetError(f'AppEEARS task {task_id}: {status}.')
             await asyncio.sleep(self.POLL_SECONDS)
-        files = (await self._json('GET', f'bundle/{task_id}'))['files']
-        csv = next(f for f in files if f['file_name'].endswith('results.csv'))
-        body = await self._request(
-            'GET', f'bundle/{task_id}/{base.check_name(csv["file_id"])}')
-        return pd.read_csv(io.BytesIO(body), parse_dates=['Date'])
+        return task_id, (await self._json('GET', f'bundle/{task_id}'))['files']
 
 
 class Giovanni(Earthdata):
@@ -125,6 +190,8 @@ class Giovanni(Earthdata):
     BASE_URL = 'https://api.giovanni.earthdata.nasa.gov/'
     COLLECTION: ClassVar[str] = ''  # Giovanni id prefix: <ShortName>_<ver>.
     VARIABLE: ClassVar[str] = ''
+    RESOLUTION: ClassVar[float] = 0.1  # Grid cell size, degrees.
+    MAX_POINTS: ClassVar[int] = 256  # Most grid cells per area request.
     _HEADER_LINES: ClassVar[int] = 13
 
     @classmethod
@@ -166,6 +233,29 @@ class Giovanni(Earthdata):
         frame.attrs = {k: v.strip() for k, v in meta.items()}
         return frame
 
+    async def timeseries_area(self, bbox: base.Bbox, start, end,
+                              variable: str | None = None) -> pd.DataFrame:
+        """Returns a variable's time series at each grid cell of a bbox.
+
+        The API serves points only, so each cell (`RESOLUTION` degrees) is
+        one request; at most `MAX_POINTS` cells.
+
+        Returns:
+            Columns time, lat, lon and `variable`; metadata in `.attrs`.
+        """
+        cells = base.grid(bbox, self.RESOLUTION)
+        if len(cells) > self.MAX_POINTS:
+            raise ValueError(
+                f'{len(cells)} grid cells: over {self.MAX_POINTS}.')
+        frames = await asyncio.gather(*(
+            self.timeseries(lat, lon, start, end, variable)
+            for lat, lon in cells))
+        frame = pd.concat([f.assign(lat=lat, lon=lon)
+                           for f, (lat, lon) in zip(frames, cells)],
+                          ignore_index=True)
+        frame.attrs = frames[0].attrs
+        return frame[['time', 'lat', 'lon', *frames[0].columns[1:]]]
+
 
 class SMAP(AppEEARS):
     """SMAP enhanced L3 soil moisture (9 km) and freeze/thaw state."""
@@ -181,6 +271,13 @@ class SMAP(AppEEARS):
         layer = 'Freeze_Thaw_Retrieval_Data_Global_freeze_thaw'
         return await self.point(lat, lon, start, end, product='SPL3FTP.004',
                                 layers=[layer])
+
+    async def freeze_thaw_area(self, bbox: base.Bbox, start,
+                               end) -> pd.DataFrame:
+        """Returns the SMAP freeze/thaw state of each pixel in a bbox."""
+        layer = 'Freeze_Thaw_Retrieval_Data_Global_freeze_thaw'
+        return await self.area(bbox, start, end, product='SPL3FTP.004',
+                               layers=[layer])
 
 
 class Landsat(AppEEARS):
@@ -220,6 +317,12 @@ class ECOSTRESS(AppEEARS):
         return await self.point(lat, lon, start, end,
                                 product='ECO_L3T_JET.002', layers=['ETdaily'])
 
+    async def evapotranspiration_area(self, bbox: base.Bbox, start,
+                                      end) -> pd.DataFrame:
+        """Returns daily ET (mm/day) of each pixel in a bbox."""
+        return await self.area(bbox, start, end, product='ECO_L3T_JET.002',
+                               layers=['ETdaily'])
+
 
 class GPM(Giovanni):
     """GPM IMERG V07 Final precipitation (half-hourly, 0.1 deg, mm/hr)."""
@@ -235,6 +338,7 @@ class NLDAS(Giovanni):
     SHORT_NAME = 'NLDAS_FORA0125_H'
     COLLECTION = 'NLDAS_FORA0125_H_2_0'
     VARIABLE = 'Tair'
+    RESOLUTION = 0.125
 
 
 class GLDAS(Giovanni):
@@ -243,6 +347,7 @@ class GLDAS(Giovanni):
     SHORT_NAME = 'GLDAS_NOAH025_3H'
     COLLECTION = 'GLDAS_NOAH025_3H_2_1'
     VARIABLE = 'SoilMoi0_10cm_inst'
+    RESOLUTION = 0.25
 
 
 class GEDI(Earthdata):

@@ -50,15 +50,26 @@ class NWIS(base.Dataset):
                 temperature (C).
         """
         site = base.check_name(site, r'[\w-]+')
+        return await self._daily(
+            start, end, parameter,
+            monitoring_location_id=site if '-' in site else f'USGS-{site}')
+
+    async def daily_area(self, bbox: base.Bbox, start, end,
+                         parameter: str = '00060') -> pd.DataFrame:
+        """Returns daily values of all sites in a bbox; see `daily`."""
+        return await self._daily(
+            start, end, parameter,
+            bbox=','.join(map(str, base.check_bbox(bbox))))
+
+    async def _daily(self, start, end, parameter, **filters) -> pd.DataFrame:
         frame = await self.items(
-            'daily', monitoring_location_id=site if '-' in site
-            else f'USGS-{site}',
-            parameter_code=base.check_name(parameter, r'\d{5}'),
-            time=f'{base.date(start)}/{base.date(end)}')
+            'daily', parameter_code=base.check_name(parameter, r'\d{5}'),
+            time=f'{base.date(start)}/{base.date(end)}', **filters)
         if not frame.empty:
             frame['time'] = pd.to_datetime(frame['time'])
             frame['value'] = pd.to_numeric(frame['value'])
-            frame = frame.sort_values('time', ignore_index=True)
+            frame = frame.sort_values(['monitoring_location_id', 'time'],
+                                      ignore_index=True)
         return frame
 
     async def items(self, collection: str, **params) -> pd.DataFrame:
@@ -103,15 +114,41 @@ class OpenET(base.Dataset):
             variable: ET, ETo, ETof, NDVI or PR.
         """
         lat, lon = base.check_point(lat, lon)
+        return await self._timeseries('point', [lon, lat], start, end,
+                                      interval, model, variable)
+
+    async def area(self, bbox: base.Bbox, start, end,
+                   interval: str = 'monthly', model: str = 'Ensemble',
+                   variable: str = 'ET',
+                   reducer: str = 'mean') -> pd.DataFrame:
+        """Returns an ET time series aggregated over a bbox (mm).
+
+        Args:
+            bbox: (west, south, east, north).
+            start: Start date.
+            end: End date.
+            interval: 'daily' or 'monthly'.
+            model: As in `point`.
+            variable: As in `point`.
+            reducer: Pixel aggregate: mean, median, min, max, mode or sum.
+        """
+        corners = [c for corner in base.ring(bbox)[:-1] for c in corner]
+        return await self._timeseries(
+            'polygon', corners, start, end, interval, model, variable,
+            reducer=base.check_name(reducer, 'mean|median|min|max|mode|sum'))
+
+    async def _timeseries(self, kind, geometry, start, end, interval, model,
+                          variable, **extra) -> pd.DataFrame:
         body = {
             'date_range': [base.date(start), base.date(end)],
             'interval': base.check_name(interval, 'daily|monthly'),
-            'geometry': [lon, lat],
+            'geometry': geometry,
             'model': base.check_name(model),
             'variable': base.check_name(variable),
             'reference_et': 'gridMET',
             'units': 'mm',
             'file_format': 'JSON',
+            **extra,
         }
         return pd.DataFrame(
-            await self._json('POST', 'raster/timeseries/point', json=body))
+            await self._json('POST', f'raster/timeseries/{kind}', json=body))

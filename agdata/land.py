@@ -50,6 +50,7 @@ class NLCD(base.Dataset):
     """USGS National Land Cover Database (30 m, CONUS) from MRLC."""
 
     BASE_URL = 'https://www.mrlc.gov/geoserver/mrlc_display/wms'
+    WCS_URL: ClassVar[str] = 'https://www.mrlc.gov/geoserver/mrlc_download/wcs'
     YEARS: ClassVar[tuple[int, ...]] = (
         2001, 2004, 2006, 2008, 2011, 2013, 2016, 2019, 2021)
     CLASSES: ClassVar[dict[int, str]] = {
@@ -81,6 +82,32 @@ class NLCD(base.Dataset):
                     'class': self.CLASSES.get(code)}
 
         return pd.DataFrame(await asyncio.gather(*map(cover, years)))
+
+    async def land_cover_area(self, bbox: base.Bbox,
+                              years: int | Iterable[int] = YEARS[-1]
+                              ) -> pd.DataFrame:
+        """Returns the land-cover class of every 30 m pixel in a bbox.
+
+        Returns:
+            Columns year, lat, lon, code, class.
+        """
+        west, south, east, north = base.TO_ALBERS.transform_bounds(
+            *base.check_bbox(bbox))
+        years = [int(years)] if isinstance(years, int) else map(int, years)
+
+        async def cover(year: int) -> pd.DataFrame:
+            frame = await self._raster('GET', self.WCS_URL, bbox=bbox, params=[
+                ('service', 'WCS'), ('version', '2.0.1'),
+                ('request', 'GetCoverage'), ('format', 'image/tiff'),
+                ('coverageId', f'mrlc_download__NLCD_{year}_Land_Cover_L48'),
+                ('subset', f'X({west},{east})'),
+                ('subset', f'Y({south},{north})')], nodata=[0])
+            return frame.rename(columns={'value': 'code'}).assign(year=year)
+
+        frame = pd.concat(await asyncio.gather(*map(cover, years)),
+                          ignore_index=True)
+        frame['class'] = frame.code.map(self.CLASSES).astype('category')
+        return frame[['year', 'lat', 'lon', 'code', 'class']]
 
 
 def _read_ascii_grid(text: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
