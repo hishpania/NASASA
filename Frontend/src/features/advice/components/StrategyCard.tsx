@@ -1,7 +1,8 @@
 import { Badge } from '@/components/catalyst/badge'
 import { ChevronRightIcon } from '@heroicons/react/16/solid'
+import clsx from 'clsx'
 import { Fragment } from 'react'
-import type { RotationStrategy } from '../model/advice'
+import type { LandUse, RotationStrategy, Season } from '../model/advice'
 import { INDICATORS, type Indicator } from '../model/priority'
 import { CropIcon } from './CropIcon'
 import { MoreDetails } from './MoreDetails'
@@ -11,9 +12,11 @@ import { ScoreMeter } from './ScoreMeter'
 type StrategyCardProps = {
   strategy: RotationStrategy
   emphasized: ReadonlySet<Indicator>
+  firstYear: number
+  past: Season[]
 }
 
-export function StrategyCard({ strategy, emphasized }: StrategyCardProps) {
+export function StrategyCard({ strategy, emphasized, firstYear, past }: StrategyCardProps) {
   const { name, isCurrent, sequence, summary, indicators, evidence, benefits, risks } = strategy
 
   return (
@@ -24,20 +27,19 @@ export function StrategyCard({ strategy, emphasized }: StrategyCardProps) {
       </div>
 
       <ol aria-label="Crop sequence" className="flex items-start gap-1">
+        {past.map((season, index) => (
+          <Fragment key={`past-${index}`}>
+            {index > 0 && <Arrow />}
+            <SeasonTile landUse={season.landUse} caption={season.year ?? 'Last season'} muted />
+          </Fragment>
+        ))}
+        {past.length > 0 && (
+          <li aria-hidden="true" className="mx-1 h-12 w-px shrink-0 bg-zinc-950/10 dark:bg-white/10" />
+        )}
         {sequence.map((landUse, year) => (
           <Fragment key={year}>
-            {year > 0 && (
-              <ChevronRightIcon className="mt-4 size-4 shrink-0 text-zinc-300 dark:text-zinc-600" aria-hidden="true" />
-            )}
-            <li className="flex min-w-0 flex-1 flex-col items-center gap-1 text-center">
-              <span
-                className="grid size-12 place-items-center rounded-xl bg-zinc-50 ring-1 ring-zinc-950/5 dark:bg-white/5 dark:ring-white/10"
-              >
-                <CropIcon landUseId={landUse.id} className="size-8" />
-              </span>
-              <span className="w-full truncate text-xs/4 text-zinc-700 dark:text-zinc-300">{landUse.name}</span>
-              <span className="text-[10px]/3 text-zinc-400 dark:text-zinc-500">Year {year + 1}</span>
-            </li>
+            {year > 0 && <Arrow />}
+            <SeasonTile landUse={landUse} caption={firstYear + year} />
           </Fragment>
         ))}
       </ol>
@@ -55,5 +57,27 @@ export function StrategyCard({ strategy, emphasized }: StrategyCardProps) {
         <NoteList notes={evidence} tone="neutral" />
       </MoreDetails>
     </article>
+  )
+}
+
+function Arrow() {
+  return <ChevronRightIcon className="mt-4 size-4 shrink-0 text-zinc-300 dark:text-zinc-600" aria-hidden="true" />
+}
+
+type SeasonTileProps = {
+  landUse: LandUse
+  caption: number | string
+  muted?: boolean
+}
+
+function SeasonTile({ landUse, caption, muted = false }: SeasonTileProps) {
+  return (
+    <li className={clsx('flex min-w-0 flex-1 flex-col items-center gap-1 text-center', muted && 'opacity-50')}>
+      <span className="grid size-12 place-items-center rounded-xl bg-zinc-50 ring-1 ring-zinc-950/5 dark:bg-white/5 dark:ring-white/10">
+        <CropIcon landUseId={landUse.id} className="size-8" />
+      </span>
+      <span className="w-full truncate text-xs/4 text-zinc-700 dark:text-zinc-300">{landUse.name}</span>
+      <span className="text-[10px]/3 text-zinc-400 tabular-nums dark:text-zinc-500">{caption}</span>
+    </li>
   )
 }

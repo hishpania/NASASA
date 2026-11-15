@@ -8,7 +8,7 @@ URL = "https://nassgeodata.gmu.edu/axis2/services/CDLService/GetCDLValue"
 
 # Newest CDL year the CropScape service answers for. A year that is not published
 # yet makes the service hang instead of failing, so it is not probed at runtime.
-LATEST_YEAR = 2024
+LATEST_YEAR = 2025
 
 _VALUE = re.compile(r"value:\s*(\d+)")
 
