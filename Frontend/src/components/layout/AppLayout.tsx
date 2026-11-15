@@ -16,7 +16,7 @@ export function AppLayout() {
           <header className="shrink-0 border-b border-zinc-950/5 bg-white dark:border-white/5 dark:bg-zinc-900">
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                <span className="text-base/7 font-semibold text-zinc-950 dark:text-white">Neosphere</span>
+                <span className="text-base/7 font-semibold text-zinc-950 dark:text-white">Peter67's Farm</span>
                 <FieldSwitcher />
                 <AppNav />
               </div>
