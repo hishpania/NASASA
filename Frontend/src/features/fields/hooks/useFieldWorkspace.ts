@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
-import { FieldCollection } from '../model/collection'
+import { useCallback, useState } from 'react'
 import type { Place } from '../model/place'
 import { fieldApi } from '../services'
 import { useFieldDraft } from './useFieldDraft'
-
-export type WorkspaceStatus = 'loading' | 'ready' | 'failed'
+import { useFields } from './useFields'
 
 function describeError(reason: unknown): string {
   return reason instanceof Error ? reason.message : 'Something went wrong'
@@ -13,29 +11,10 @@ function describeError(reason: unknown): string {
 export function useFieldWorkspace() {
   const selection = useFieldDraft()
   const { shape, reset, load } = selection
-  const [collection, setCollection] = useState(FieldCollection.EMPTY)
-  const [status, setStatus] = useState<WorkspaceStatus>('loading')
+  const { collection, setCollection, status, loadError, current, select } = useFields()
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeId, setActiveId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    fieldApi
-      .list(controller.signal)
-      .then((entries) => {
-        setCollection(FieldCollection.of(entries))
-        setStatus('ready')
-      })
-      .catch((reason: unknown) => {
-        if (!controller.signal.aborted) {
-          setError(describeError(reason))
-          setStatus('failed')
-        }
-      })
-    return () => controller.abort()
-  }, [])
 
   const persist = useCallback(async (operation: () => Promise<void>) => {
     setIsSaving(true)
@@ -58,18 +37,18 @@ export function useFieldWorkspace() {
       void persist(async () => {
         if (editingEntry) {
           const saved = await fieldApi.update(editingEntry.id, { name: editingEntry.name, place, shape })
-          setCollection((current) => current.update(saved.id, saved))
-          setActiveId(saved.id)
+          setCollection((entries) => entries.update(saved.id, saved))
+          select(saved.id)
           setEditingId(null)
         } else {
           const saved = await fieldApi.create({ name: collection.nextDefaultName(), place, shape })
-          setCollection((current) => current.add(saved))
-          setActiveId(saved.id)
+          setCollection((entries) => entries.add(saved))
+          select(saved.id)
         }
         reset()
       })
     },
-    [shape, editingId, collection, persist, reset],
+    [shape, editingId, collection, persist, reset, setCollection, select],
   )
 
   const startEditing = useCallback(
@@ -78,10 +57,10 @@ export function useFieldWorkspace() {
       if (entry) {
         load(entry.shape)
         setEditingId(id)
-        setActiveId(id)
+        select(id)
       }
     },
-    [collection, load],
+    [collection, load, select],
   )
 
   const cancelEditing = useCallback(() => {
@@ -93,19 +72,21 @@ export function useFieldWorkspace() {
     (id: string) => {
       void persist(async () => {
         await fieldApi.remove(id)
-        setCollection((current) => current.remove(id))
-        setActiveId((current) => (current === id ? null : current))
+        setCollection((entries) => entries.remove(id))
         if (editingId === id) {
           cancelEditing()
         }
       })
     },
-    [editingId, cancelEditing, persist],
+    [editingId, cancelEditing, persist, setCollection],
   )
 
-  const rename = useCallback((id: string, name: string) => {
-    setCollection((current) => current.update(id, { name }))
-  }, [])
+  const rename = useCallback(
+    (id: string, name: string) => {
+      setCollection((entries) => entries.update(id, { name }))
+    },
+    [setCollection],
+  )
 
   const saveName = useCallback(
     (id: string) => {
@@ -115,10 +96,10 @@ export function useFieldWorkspace() {
       }
       void persist(async () => {
         const saved = await fieldApi.update(id, entry)
-        setCollection((current) => current.update(id, { name: saved.name }))
+        setCollection((entries) => entries.update(id, { name: saved.name }))
       })
     },
-    [collection, persist],
+    [collection, persist, setCollection],
   )
 
   return {
@@ -126,10 +107,10 @@ export function useFieldWorkspace() {
     collection,
     status,
     isSaving,
-    error,
-    activeId,
+    error: error ?? loadError,
+    activeId: current?.id ?? null,
     editingId,
-    activate: setActiveId,
+    activate: select,
     commitDraft,
     startEditing,
     cancelEditing,

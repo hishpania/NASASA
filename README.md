@@ -8,11 +8,11 @@ Agro field selection platform: a React map client, a .NET Clean Architecture API
 | --- | --- |
 | `Backend/` | .NET 10 solution based on [Clean Architecture](https://github.com/jasontaylordev/CleanArchitecture): `Domain`, `Application`, `Infrastructure`, `Web` (minimal API), `AppHost` (Aspire orchestration) |
 | `Frontend/` | React 19 + Vite + Tailwind (Catalyst UI) field selector with Leaflet maps |
-| `Model/` | ML models, each one a separate program |
+| `Model/` | ML models, each one a separate program. [`crop_advisor`](Model/crop_advisor/README.md) is the Python service behind crop advice |
 
 ## Run everything
 
-Requirements: .NET SDK 10, Node 22+, Docker.
+Requirements: .NET SDK 10, Node 22+, Docker, [uv](https://docs.astral.sh/uv/) (runs the Python crop advisor).
 
 ```bash
 cd Frontend && npm install && cd ..
@@ -23,6 +23,7 @@ The Aspire dashboard opens with links to:
 
 - `webfrontend` — the React app
 - `webapi` — the API with Scalar docs at `/scalar`
+- `cropadvisor` — the crop advisor (FastAPI) with docs at `/docs`
 - `dbserver` — PostgreSQL with pgAdmin
 
 The development database is seeded with `demo@neosphere.local` / `demo1234`.
@@ -38,6 +39,7 @@ The development database is seeded with `demo@neosphere.local` / `demo1234`.
 | `POST` | `/api/Fields` | Bearer JWT |
 | `PUT` | `/api/Fields/{id}` | Bearer JWT |
 | `DELETE` | `/api/Fields/{id}` | Bearer JWT |
+| `GET` | `/api/Fields/{id}/recommendations` | Bearer JWT |
 
 ## Database
 

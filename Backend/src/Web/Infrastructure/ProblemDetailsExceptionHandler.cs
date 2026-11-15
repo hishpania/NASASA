@@ -8,7 +8,7 @@ namespace Neosphere.Web.Infrastructure;
 /// <summary>
 /// Converts well-known application exceptions into RFC 9110-compliant <see cref="ProblemDetails"/> responses,
 /// mapping <see cref="ValidationException"/> → 400, <see cref="NotFoundException"/> → 404,
-/// <see cref="UnauthorizedAccessException"/> → 401.
+/// <see cref="UnauthorizedAccessException"/> → 401, <see cref="CropAdvisorUnavailableException"/> → 503.
 /// Unrecognised exceptions are not handled and fall through to the default middleware.
 /// </summary>
 public class ProblemDetailsExceptionHandler : IExceptionHandler
@@ -34,6 +34,13 @@ public class ProblemDetailsExceptionHandler : IExceptionHandler
                 Status = StatusCodes.Status401Unauthorized,
                 Title = "Unauthorized",
                 Type = "https://tools.ietf.org/html/rfc9110#section-15.5.2"
+            }),
+            CropAdvisorUnavailableException ce => (StatusCodes.Status503ServiceUnavailable, new ProblemDetails
+            {
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Type = "https://tools.ietf.org/html/rfc9110#section-15.6.4",
+                Title = "Crop recommendations are temporarily unavailable.",
+                Detail = ce.Message
             }),
             _ => (-1, null)
         };

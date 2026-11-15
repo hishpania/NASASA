@@ -1,0 +1,24 @@
+{
+  "rows": 4250,
+  "fields": 650,
+  "classes": {
+    "soybeans": 1319,
+    "corn": 1319,
+    "winter_wheat": 356,
+    "spring_wheat": 271,
+    "cotton": 261,
+    "fallow": 227,
+    "alfalfa": 159,
+    "sorghum": 97,
+    "rice": 53,
+    "canola": 45,
+    "barley": 40,
+    "dry_beans": 39,
+    "sugar_beets": 34,
+    "peas": 30
+  },
+  "validation": "5-fold, whole fields held out",
+  "accuracy": 0.672,
+  "top3Accuracy": 0.925,
+  "baselineAccuracy": 0.641
+}

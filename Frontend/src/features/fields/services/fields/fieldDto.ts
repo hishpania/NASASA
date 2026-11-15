@@ -1,5 +1,5 @@
 import type { Field, FieldDetails } from '../../model/collection'
-import type { LatLng } from '../../model/geo'
+import { normalizeLatLng, type LatLng } from '../../model/geo'
 import type { Place } from '../../model/place'
 import { PolygonShape, RadiusShape, type ShapeMode } from '../../model/shape'
 
@@ -41,8 +41,8 @@ export function toPayload({ name, place, shape }: FieldDetails): FieldPayload {
     mode: shape.mode,
     areaHectares: shape.areaHectares,
     radiusMeters: shape instanceof RadiusShape ? shape.radiusMeters : null,
-    center: shape.center,
-    points: [...shape.points],
-    place,
+    center: normalizeLatLng(shape.center),
+    points: shape.points.map(normalizeLatLng),
+    place: place ? { ...place, point: normalizeLatLng(place.point) } : null,
   }
 }

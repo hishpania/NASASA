@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Neosphere.Application.Common.Interfaces;
+using Neosphere.Infrastructure.CropAdvice;
 using Neosphere.Infrastructure.Data;
 using Neosphere.Infrastructure.Data.Interceptors;
 using Neosphere.Infrastructure.Security;
@@ -18,6 +19,7 @@ public static class DependencyInjection
     {
         builder.AddPersistence();
         builder.AddJwtAuthentication();
+        builder.AddCropAdvisor();
 
         builder.Services.AddSingleton(TimeProvider.System);
     }
@@ -40,6 +42,13 @@ public static class DependencyInjection
 
         builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
         builder.Services.AddScoped<ApplicationDbContextInitialiser>();
+    }
+
+    private static void AddCropAdvisor(this IHostApplicationBuilder builder)
+    {
+        // The host name is resolved by service discovery to the crop advisor resource of the AppHost.
+        builder.Services.AddHttpClient<ICropAdvisor, CropAdvisorClient>(client =>
+            client.BaseAddress = new Uri($"http://{Services.CropAdvisor}"));
     }
 
     private static void AddJwtAuthentication(this IHostApplicationBuilder builder)

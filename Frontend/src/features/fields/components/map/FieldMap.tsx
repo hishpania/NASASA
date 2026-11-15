@@ -1,13 +1,16 @@
-import { DEFAULT_VIEW, type BaseLayerConfig } from '@/config/map'
-import type { ReactNode } from 'react'
+import type { BaseLayerConfig } from '@/config/map'
+import { useState, type ReactNode } from 'react'
 import { MapContainer, TileLayer } from 'react-leaflet'
 import type { Field } from '../../model/collection'
 import type { FieldDraft } from '../../model/draft'
 import type { LatLng } from '../../model/geo'
+import { initialMapView } from '../../model/mapView'
 import type { LocatedPosition } from '../../services'
 import type { LabelVariant } from './labelLayout'
 import { MapFocusController, type MapFocus } from './MapFocusController'
+import { FollowCurrentField } from './FollowCurrentField'
 import { MapInteraction } from './MapInteraction'
+import { MapViewMemory } from './MapViewMemory'
 import { PolygonDraftLayer } from './PolygonDraftLayer'
 import { RadiusDraftLayer } from './RadiusDraftLayer'
 import { SavedFieldsLayer } from './SavedFieldsLayer'
@@ -16,6 +19,8 @@ import { UserLocationLayer } from './UserLocationLayer'
 type FieldMapProps = {
   baseLayer: BaseLayerConfig
   draft: FieldDraft
+  /** A drawing tool is in hand: map clicks place points and saved territories stop reacting. */
+  isDrawing: boolean
   canClosePolygon: boolean
   savedEntries: readonly Field[]
   activeId: string | null
@@ -35,6 +40,7 @@ type FieldMapProps = {
 export function FieldMap({
   baseLayer,
   draft,
+  isDrawing,
   canClosePolygon,
   savedEntries,
   activeId,
@@ -50,14 +56,15 @@ export function FieldMap({
   onSavedSelect,
   renderFieldLabel,
 }: FieldMapProps) {
-  const isPlacing = draft.mode === 'radius' || !draft.isPolygonClosed
-  const hasDraft = draft.mode === 'polygon' ? draft.vertices.length > 0 : draft.center !== null
+  const isPlacing = isDrawing && (draft.mode === 'radius' || !draft.isPolygonClosed)
+  const [view] = useState(initialMapView)
 
   return (
     <MapContainer
-      center={[DEFAULT_VIEW.center.lat, DEFAULT_VIEW.center.lng]}
-      zoom={DEFAULT_VIEW.zoom}
+      center={[view.center.lat, view.center.lng]}
+      zoom={view.zoom}
       doubleClickZoom={false}
+      worldCopyJump
       className="size-full"
     >
       <TileLayer
@@ -68,12 +75,14 @@ export function FieldMap({
       />
       <MapInteraction isPlacing={isPlacing} onPlace={onPlace} />
       <MapFocusController focus={focus} />
+      <MapViewMemory />
+      <FollowCurrentField field={savedEntries.find(({ id }) => id === activeId) ?? null} />
       <UserLocationLayer position={userPosition} />
       <SavedFieldsLayer
         entries={savedEntries}
         activeId={activeId}
         hiddenId={editingId}
-        interactive={!hasDraft}
+        interactive={!isDrawing}
         onSelect={onSavedSelect}
         renderLabel={renderFieldLabel}
       />

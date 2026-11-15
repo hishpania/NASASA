@@ -9,9 +9,9 @@ type GeolocationNoticeProps = {
 
 export function GeolocationNotice({ error, onRetry }: GeolocationNoticeProps) {
   return (
-    <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-3 ring-1 ring-amber-600/20 dark:bg-amber-500/10 dark:ring-amber-500/20">
-      <ExclamationTriangleIcon className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-      <p className="flex-1 text-sm/6 text-amber-800 dark:text-amber-200">{error.message}</p>
+    <div className="flex items-start gap-3 rounded-lg bg-zinc-950/3 p-3 ring-1 ring-zinc-950/10 dark:bg-white/5 dark:ring-white/10">
+      <ExclamationTriangleIcon className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden="true" />
+      <p className="flex-1 text-sm/6 text-zinc-700 dark:text-zinc-300">{error.message}</p>
       {error.reason !== 'unsupported' && error.reason !== 'denied' && (
         <Button plain onClick={onRetry}>
           Retry

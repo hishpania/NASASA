@@ -1,8 +1,9 @@
 import { Link } from '@/components/catalyst/link'
 import { Text } from '@/components/catalyst/text'
+import { Notice } from '@/components/ui/Notice'
 import { ChartCard, SERIES_COLORS, StatTile } from '@/components/charts'
-import { fieldApi, type Field, type LatLng } from '@/features/fields'
-import { useEffect, useMemo, useState } from 'react'
+import { useFields, type Field, type LatLng } from '@/features/fields'
+import { useState } from 'react'
 import { useClimateData } from '../hooks/useClimateData'
 import { summarize } from '../model/climate'
 import { DailyBarChart } from './DailyBarChart'
@@ -26,10 +27,6 @@ const PERIODS = [
 
 type Period = (typeof PERIODS)[number]['value']
 
-const coordinateFormatter = new Intl.NumberFormat('en-US', {
-  maximumFractionDigits: 3,
-})
-
 function toLocation(field: Field): Location {
   return { id: field.id, name: field.name, point: field.shape.center }
 }
@@ -39,41 +36,26 @@ function formatNumber(value: number | null, digits: number): string {
 }
 
 export function ClimateView() {
-  const [fields, setFields] = useState<Location[] | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { current, status } = useFields()
   const [period, setPeriod] = useState<Period>(90)
 
-  useEffect(() => {
-    const controller = new AbortController()
-    fieldApi
-      .list(controller.signal)
-      .then((list) => setFields(list.map(toLocation)))
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setFields([])
-        }
-      })
-    return () => controller.abort()
-  }, [])
-
-  const locations = useMemo(() => (fields && fields.length > 0 ? fields : [SAMPLE_LOCATION]), [fields])
-  const location = locations.find((candidate) => candidate.id === selectedId) ?? locations[0]
-  const climate = useClimateData(fields ? location.point : null, period)
+  // Without a field yet, show a sample so the page still explains itself.
+  const location = current ? toLocation(current) : SAMPLE_LOCATION
+  const hasLocation = status !== 'loading'
+  const climate = useClimateData(hasLocation ? location.point : null, period)
   const series = climate.status === 'loaded' ? climate.series : null
   const summary = series ? summarize(series.days) : null
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <SegmentedControl
-          label="Location"
-          options={locations.map(({ id, name }) => ({
-            value: id,
-            label: name,
-          }))}
-          value={location.id}
-          onChange={setSelectedId}
-        />
+        {current === null && hasLocation ? (
+          <Text>
+            Showing a sample place. <Link href="/">Outline your territory</Link> to see its own data.
+          </Text>
+        ) : (
+          <span />
+        )}
         <SegmentedControl label="Period" options={PERIODS} value={period} onChange={setPeriod} />
       </div>
 
@@ -82,17 +64,10 @@ export function ClimateView() {
         <Link href="https://power.larc.nasa.gov/" target="_blank" rel="noreferrer">
           NASA POWER
         </Link>{' '}
-        for {location.name} at {coordinateFormatter.format(location.point.lat)},{' '}
-        {coordinateFormatter.format(location.point.lng)}
-        {series?.elevationMeters != null && `, ${Math.round(series.elevationMeters)} m elevation`}. The newest days can
-        lag by a few days.
+        for {location.name}. The newest days can lag by a few days.
       </Text>
 
-      {climate.status === 'failed' && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm/6 text-red-800 ring-1 ring-red-600/20 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-500/20">
-          Could not load NASA POWER data: {climate.message}
-        </div>
-      )}
+      {climate.status === 'failed' && <Notice>Could not load NASA POWER data: {climate.message}</Notice>}
 
       {(climate.status === 'loading' || climate.status === 'idle') && (
         <div className="rounded-xl bg-white p-6 text-sm/6 text-zinc-500 ring-1 ring-zinc-950/5 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-white/10">
