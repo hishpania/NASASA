@@ -218,3 +218,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Frontend source folders shadowed by the Python rules above
+!Frontend/src/lib/
+
+# .NET
+Backend/artifacts/
+*.user
+.vs/
+.idea/
+
+# Node
+node_modules/
+Frontend/dist/
+
+# OS
+.DS_Store
+
+# Crop advisor: raw API responses, logs and the trained model are rebuilt locally
+Model/crop_advisor/data/cache/
+Model/crop_advisor/data/*.log
+Model/crop_advisor/data/*.joblib

@@ -1,0 +1,8 @@
+.venv/
+.pytest_cache/
+**/__pycache__/
+tests/
+# Built at image build time, as on CI where git has none of these.
+data/cache/
+data/*.log
+data/*.joblib

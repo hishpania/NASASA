@@ -1,0 +1,60 @@
+# Ships the app to the production VM: copies the sources over SSH and rebuilds the Docker Compose stack there.
+# Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (private key), DEPLOY_KNOWN_HOSTS (the server's host key line).
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      APP_DIR: /srv/neosphere
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host app\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n' \
+            "$DEPLOY_HOST" "$DEPLOY_USER" > ~/.ssh/config
+
+      - name: Upload sources
+        # deploy/.env holds the server's secrets; excluded files survive --delete.
+        run: |
+          rsync -az --delete \
+            --exclude 'deploy/.env' \
+            --exclude 'node_modules/' --exclude 'dist/' --exclude 'bin/' --exclude 'obj/' --exclude 'artifacts/' \
+            --exclude '.venv/' --exclude '__pycache__/' --exclude '*.ipynb' \
+            Backend Frontend Model deploy app:"$APP_DIR"/
+
+      - name: Rebuild and restart
+        run: ssh app "cd $APP_DIR/deploy && docker compose up -d --build --remove-orphans && docker image prune -f"
+
+      - name: Check the site answers
+        run: |
+          for attempt in $(seq 1 30); do
+            page=$(curl -s -o /dev/null -w '%{http_code}' "http://$DEPLOY_HOST/" || true)
+            # An anonymous call must reach the API and be refused (401), not fail at the proxy (502).
+            api=$(curl -s -o /dev/null -w '%{http_code}' "http://$DEPLOY_HOST/api/Auth/me" || true)
+            echo "attempt $attempt: page $page, api $api"
+            if [ "$page" = 200 ] && [ "$api" = 401 ]; then exit 0; fi
+            sleep 5
+          done
+          ssh app "cd $APP_DIR/deploy && docker compose ps && docker compose logs --tail 50 webapi"
+          exit 1

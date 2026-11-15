@@ -1,0 +1,60 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.leaflet-container {
+  font-family: var(--font-sans);
+}
+
+.leaflet-tooltip.field-label {
+  padding: 14px 16px;
+  border: none;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.95);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.18);
+  backdrop-filter: blur(4px);
+}
+
+.leaflet-tooltip.field-label-compact {
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+.leaflet-tooltip.field-label::before {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .leaflet-tooltip.field-label {
+    background: rgb(24 24 27 / 0.92);
+  }
+}
+
+.leaflet-div-icon.shape-handle {
+  background: transparent;
+  border: none;
+}
+
+:root {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --chart-grid: #e4e4e7;
+  --chart-axis: #71717a;
+  --chart-surface: #ffffff;
+  --chart-cursor: rgb(9 9 11 / 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --chart-grid: #27272a;
+    --chart-axis: #a1a1aa;
+    --chart-surface: #18181b;
+    --chart-cursor: rgb(255 255 255 / 0.05);
+  }
+}
