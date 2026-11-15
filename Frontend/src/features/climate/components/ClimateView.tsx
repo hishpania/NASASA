@@ -6,11 +6,14 @@ import { useFields } from '@/features/fields'
 import { useMemo, useState, type ReactNode } from 'react'
 import { useClimateData } from '../hooks/useClimateData'
 import { useFieldForecast } from '../hooks/useFieldForecast'
-import { summarize, type ClimateDay } from '../model/climate'
+import { useFieldOutlook } from '../hooks/useFieldOutlook'
+import { summarize } from '../model/climate'
 import type { ClimateForecast, ForecastSeriesId } from '../model/forecast'
+import type { OutlookSeriesId } from '../model/outlook'
 import { buildTimeline } from '../model/timeline'
 import { NoFieldState } from '@/components/ui/NoFieldState'
-import { SeasonOutlook } from './SeasonOutlook'
+import { OutlookChart } from './OutlookChart'
+import { OutlookPreparing } from './OutlookPreparing'
 import { SegmentedControl } from './SegmentedControl'
 import { TimelineChart } from './TimelineChart'
 
@@ -22,10 +25,10 @@ const PERIODS = [
 
 type Period = (typeof PERIODS)[number]['value']
 
-const OUTLOOK_TITLES: Record<ForecastSeriesId, string> = {
-  temperature: 'Temperature',
-  precipitation: 'Precipitation',
-  soil_wetness: 'Soil wetness',
+const OUTLOOK_DESCRIPTIONS: Record<OutlookSeriesId, string> = {
+  temperature: 'Monthly mean air temperature at 2 m.',
+  humidity: 'Monthly mean relative humidity at 2 m.',
+  soil_wetness: 'Monthly mean share of root zone soil pores filled with water.',
 }
 
 function formatNumber(value: number | null, digits: number): string {
@@ -40,20 +43,6 @@ function Placeholder({ children }: { children: ReactNode }) {
   )
 }
 
-function SkillNote({ forecast }: { forecast: ClimateForecast }) {
-  const skilled = forecast.series
-    .filter((series) => series.season.method === 'model')
-    .map((series) => OUTLOOK_TITLES[series.id].toLowerCase())
-  return (
-    <Text>
-      The odds come from a model trained on 25 years of monthly NASA POWER data and checked on the last two years. It
-      only moves the odds away from an even third each where it beat the 25-year normal
-      {skilled.length > 0 ? `, which it did for ${skilled.join(', ')}` : ', which it did not do this time'}. Treat them
-      as a tilt, not a promise.
-    </Text>
-  )
-}
-
 function normalsOf(forecast: ClimateForecast | null, id: ForecastSeriesId) {
   return forecast?.series.find((series) => series.id === id)?.history
 }
@@ -64,6 +53,7 @@ export function ClimateView() {
 
   const climate = useClimateData(current?.shape.center ?? null, period)
   const outlook = useFieldForecast(current?.id ?? null)
+  const monthly = useFieldOutlook(current?.id ?? null)
   const days = climate.status === 'loaded' ? climate.series.days : null
   const forecast = outlook.status === 'loaded' ? outlook.forecast : null
   const summary = days ? summarize(days) : null
@@ -72,24 +62,13 @@ export function ClimateView() {
     if (!days) {
       return null
     }
-    const daily = (value: (day: ClimateDay) => number | null) => buildTimeline(days, { value })
     return {
-      temperature: buildTimeline(days, {
-        value: (day) => day.temperatureMean,
-        range: (day) => day.temperatureRange,
-        normals: normalsOf(forecast, 'temperature'),
-      }),
       precipitation: buildTimeline(days, {
         value: (day) => day.precipitation,
         normals: normalsOf(forecast, 'precipitation'),
         perDay: true,
       }),
-      soilWetness: buildTimeline(days, {
-        value: (day) => day.soilWetness,
-        normals: normalsOf(forecast, 'soil_wetness'),
-      }),
-      solarRadiation: daily((day) => day.solarRadiation),
-      humidity: daily((day) => day.humidity),
+      solarRadiation: buildTimeline(days, { value: (day) => day.solarRadiation }),
     }
   }, [days, forecast])
 
@@ -110,8 +89,8 @@ export function ClimateView() {
     outlook.status === 'failed'
       ? ` The forecast is unavailable: ${outlook.message}`
       : outlook.status === 'loaded'
-        ? ' The dotted line on the charts is the 25-year normal.'
-        : ' The outlook is being trained on 25 years of monthly data…'
+        ? ' The dotted line on the precipitation chart is the 25-year normal.'
+        : ''
 
   return (
     <div className="space-y-6">
@@ -161,21 +140,27 @@ export function ClimateView() {
             />
           </div>
 
-          {forecast && <SeasonOutlook forecast={forecast} />}
+          <section className="space-y-3">
+            <div>
+              <h2 className="text-base/7 font-semibold text-zinc-950 dark:text-white">Next 12 months</h2>
+              <p className="text-sm/6 text-zinc-500 dark:text-zinc-400">
+                Chances that each month lands in the lower, middle or upper third of its history since 1981. The label
+                above a bar is the confidence from the 2010–2026 track record; faded bars have no signal.
+              </p>
+            </div>
+            {monthly.status === 'failed' && <Notice>The 12-month outlook is unavailable: {monthly.message}</Notice>}
+            {(monthly.status === 'loading' || monthly.status === 'idle' || monthly.status === 'preparing') && (
+              <OutlookPreparing startedAt={monthly.status === 'preparing' ? monthly.startedAt : null} />
+            )}
+            {monthly.status === 'loaded' &&
+              monthly.series.map((series) => (
+                <ChartCard key={series.id} title={series.name} description={OUTLOOK_DESCRIPTIONS[series.id]}>
+                  <OutlookChart series={series} />
+                </ChartCard>
+              ))}
+          </section>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <ChartCard
-              title="Air temperature"
-              description="Daily mean at 2 m with the daily min–max band, against the 25-year normal."
-              className="xl:col-span-2"
-            >
-              <TimelineChart
-                timeline={timelines.temperature}
-                name="Mean"
-                formatValue={(value) => `${value.toFixed(1)} °C`}
-                formatTick={(value) => `${value}°`}
-              />
-            </ChartCard>
             <ChartCard
               title="Precipitation"
               description="Daily precipitation, bias-corrected. The dotted line is the normal per day of each month."
@@ -189,16 +174,6 @@ export function ClimateView() {
                 formatValue={(value) => `${value.toFixed(1)} mm/day`}
               />
             </ChartCard>
-            <ChartCard title="Root zone soil wetness" description="Share of soil pores filled with water, 0 to 100 %.">
-              <TimelineChart
-                timeline={timelines.soilWetness}
-                name="Soil wetness"
-                color={SERIES_COLORS[2]}
-                domain={[0, 1]}
-                formatValue={(value) => `${Math.round(value * 100)} %`}
-                formatTick={(value) => `${Math.round(value * 100)}%`}
-              />
-            </ChartCard>
             <ChartCard
               title="Solar radiation"
               description="All-sky shortwave irradiance at the surface, MJ/m² per day."
@@ -210,18 +185,7 @@ export function ClimateView() {
                 formatValue={(value) => `${value.toFixed(1)} MJ/m²`}
               />
             </ChartCard>
-            <ChartCard title="Relative humidity" description="Daily mean at 2 m above the surface.">
-              <TimelineChart
-                timeline={timelines.humidity}
-                name="Humidity"
-                color={SERIES_COLORS[0]}
-                domain={[0, 100]}
-                formatValue={(value) => `${Math.round(value)} %`}
-              />
-            </ChartCard>
           </div>
-
-          {forecast && <SkillNote forecast={forecast} />}
         </>
       )}
     </div>

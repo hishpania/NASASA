@@ -56,7 +56,17 @@ internal sealed class CropAdvisorClient(HttpClient http) : ICropAdvisor
         }
     }
 
-    public async Task<ClimateForecastDto> GetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken)
+    public Task<ClimateForecastDto> GetForecastAsync(double latitude, double longitude, CancellationToken cancellationToken) =>
+        GetAtPointAsync<ClimateForecastDto>("forecast", latitude, longitude, cancellationToken);
+
+    public Task<MonthlyOutlookDto> GetOutlookAsync(double latitude, double longitude, CancellationToken cancellationToken) =>
+        GetAtPointAsync<MonthlyOutlookDto>("outlook", latitude, longitude, cancellationToken);
+
+    private async Task<T> GetAtPointAsync<T>(
+        string path,
+        double latitude,
+        double longitude,
+        CancellationToken cancellationToken)
     {
         var query = new QueryBuilder
         {
@@ -66,11 +76,11 @@ internal sealed class CropAdvisorClient(HttpClient http) : ICropAdvisor
 
         try
         {
-            using var response = await http.GetAsync($"forecast{query.ToQueryString()}", cancellationToken);
+            using var response = await http.GetAsync($"{path}{query.ToQueryString()}", cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            return await response.Content.ReadFromJsonAsync<ClimateForecastDto>(SerializerOptions, cancellationToken)
-                ?? throw new CropAdvisorUnavailableException("The crop advisor returned an empty forecast.");
+            return await response.Content.ReadFromJsonAsync<T>(SerializerOptions, cancellationToken)
+                ?? throw new CropAdvisorUnavailableException($"The crop advisor returned an empty {path}.");
         }
         catch (Exception exception) when (exception is not CropAdvisorUnavailableException
                                           && !cancellationToken.IsCancellationRequested)
