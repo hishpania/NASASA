@@ -239,3 +239,6 @@ Frontend/dist/
 Model/crop_advisor/data/cache/
 Model/crop_advisor/data/*.log
 Model/crop_advisor/data/*.joblib
+
+# Notebook download caches
+Model/regressions/exploration/cache/

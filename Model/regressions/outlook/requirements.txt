@@ -1,0 +1,3 @@
+-r ../../../agdata/requirements.txt
+pyarrow>=15  # GEOS-S2S cache (Parquet).
+scikit-learn>=1.5
