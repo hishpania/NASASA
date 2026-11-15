@@ -1,0 +1,44 @@
+flowchart TB
+  subgraph COLLECT["Where the training data comes from"]
+    SAMPLE["Random points in 12 US farming regions<br/>more points where there is more cropland"]
+    KEEP["Keep points that carried a field crop<br/>or fallow in 2024"]
+    HIST["USDA Cropland Data Layer:<br/>what grew at the point each year 2016–2024"]
+    NORMS["NASA POWER: climate normals of the point"]
+    ROWS["Example = point × year 2018–2024<br/>answer: the crop of that year<br/>input: climate + crops of the two previous years"]
+  end
+  SAMPLE --> KEEP --> HIST --> ROWS
+  KEEP --> NORMS --> ROWS
+
+  DS["Dataset: 4,250 examples, 650 fields, 14 crops<br/>rare crops dropped<br/>corn and soybeans are almost two thirds"]
+  ROWS --> DS
+
+  subgraph FEAT["Features"]
+    CF["Climate: heat sum, season length,<br/>season temperature, frost,<br/>annual and season rain, soil wetness,<br/>humidity, sunlight, elevation"]
+    HF["Rotation: crop one year ago and two years ago"]
+  end
+  DS --> CF & HF
+
+  MODEL["Gradient Boosting<br/>deliberately small trees,<br/>so the model does not memorize fields"]
+  CF & HF --> MODEL
+
+  subgraph VAL["How the metric was obtained"]
+    GKF["5-fold cross-validation by field:<br/>tested only on fields the model never saw"]
+    BASE["Baseline: the most common crop<br/>after the same pair of previous crops"]
+    MET["Accuracy 67 % vs 64 % for the baseline<br/>right crop in the top 3: 92 %"]
+  end
+  MODEL --> GKF --> MET
+  BASE --> MET
+
+  subgraph INFER["What the user sees"]
+    PROBA["Share of similar US fields<br/>that sowed each crop after these crops"]
+    RULES["Agronomy: heat and water over the cycle,<br/>excess rain, winter survival, soil acidity<br/>+ rotation penalties and bonuses"]
+    BLEND["Crop score = half model,<br/>half agronomy"]
+  end
+  MODEL --> PROBA --> BLEND
+  RULES --> BLEND
+
+  OUTSIDE["Outside the US or no satellite history:<br/>agronomy only"]
+  RULES --> OUTSIDE
+
+  BLEND --> OUT["Top 6 crops with reasons<br/>«Planted next on X % of similar fields»<br/>+ plan «Typical for similar fields»"]
+  OUTSIDE --> OUT
