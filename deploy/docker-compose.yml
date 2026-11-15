@@ -1,0 +1,54 @@
+# Production stack. Run from this folder: docker compose up -d --build
+# Secrets come from deploy/.env (see .env.example).
+name: neosphere
+
+services:
+  web:
+    build: ../Frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - webapi
+
+  webapi:
+    build: ../Backend
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__NeosphereDb: Host=db;Port=5432;Database=NeosphereDb;Username=postgres;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?set JWT_SIGNING_KEY in .env}
+      services__cropadvisor__http__0: http://cropadvisor:8000
+    depends_on:
+      db:
+        condition: service_healthy
+
+  cropadvisor:
+    build: ../Model/crop_advisor
+    restart: unless-stopped
+
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: NeosphereDb
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d NeosphereDb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:
