@@ -1,0 +1,103 @@
+{
+  "location": {
+    "latitude": 50.45,
+    "longitude": 30.52
+  },
+  "season_months": {
+    "start": 5,
+    "end": 9
+  },
+  "definitions": {
+    "dry_day": "precipitation < 1.0 mm/day",
+    "hot_day": "daily maximum temperature >= 30.0 °C"
+  },
+  "seasons": [
+    {
+      "year": 2020,
+      "status": "complete",
+      "start": "2020-05-01",
+      "end": "2020-09-30",
+      "days": 153,
+      "mean_temperature_c": 18.75,
+      "precipitation_total_mm": 310.89,
+      "dry_days": 97,
+      "longest_dry_spell_days": 13,
+      "hot_days": 23
+    },
+    {
+      "year": 2021,
+      "status": "complete",
+      "start": "2021-05-01",
+      "end": "2021-09-30",
+      "days": 153,
+      "mean_temperature_c": 18.28,
+      "precipitation_total_mm": 376.01,
+      "dry_days": 85,
+      "longest_dry_spell_days": 15,
+      "hot_days": 13
+    },
+    {
+      "year": 2022,
+      "status": "complete",
+      "start": "2022-05-01",
+      "end": "2022-09-30",
+      "days": 153,
+      "mean_temperature_c": 17.8,
+      "precipitation_total_mm": 313.99,
+      "dry_days": 86,
+      "longest_dry_spell_days": 11,
+      "hot_days": 11
+    },
+    {
+      "year": 2023,
+      "status": "complete",
+      "start": "2023-05-01",
+      "end": "2023-09-30",
+      "days": 153,
+      "mean_temperature_c": 18.58,
+      "precipitation_total_mm": 256.12,
+      "dry_days": 111,
+      "longest_dry_spell_days": 23,
+      "hot_days": 8
+    },
+    {
+      "year": 2024,
+      "status": "complete",
+      "start": "2024-05-01",
+      "end": "2024-09-30",
+      "days": 153,
+      "mean_temperature_c": 19.96,
+      "precipitation_total_mm": 218.07,
+      "dry_days": 114,
+      "longest_dry_spell_days": 35,
+      "hot_days": 19
+    },
+    {
+      "year": 2025,
+      "status": "complete",
+      "start": "2025-05-01",
+      "end": "2025-09-30",
+      "days": 153,
+      "mean_temperature_c": 17.92,
+      "precipitation_total_mm": 332.04,
+      "dry_days": 94,
+      "longest_dry_spell_days": 12,
+      "hot_days": 11
+    }
+  ],
+  "historical_summary": {
+    "complete_seasons": 6,
+    "mean_seasonal_precipitation_mm": 301.19,
+    "min_seasonal_precipitation_mm": 218.07,
+    "max_seasonal_precipitation_mm": 376.01,
+    "mean_hot_days_per_season": 14.2,
+    "mean_dry_days_per_season": 97.8
+  },
+  "limitations": [
+    "Historical descriptive indicators only; not forecasts for a future season.",
+    "Dry days are defined by rainfall threshold, not agricultural drought.",
+    "These indicators are not yet used in the crop ranking.",
+    "A common season is used for all crops; crop-specific calendars are not included.",
+    "NASA POWER represents gridded regional estimates, not field measurements."
+  ]
+}

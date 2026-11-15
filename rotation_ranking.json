@@ -1,0 +1,137 @@
+{
+  "target_year": 2027,
+  "history": {
+    "2024": "Wheat",
+    "2025": "Maize",
+    "2026": "Sunflower"
+  },
+  "ranking": [
+    {
+      "crop": "Maize",
+      "status": "allowed",
+      "score": 100.0,
+      "environment_score": 100.0,
+      "temperature_score": 100.0,
+      "soil_ph_score": 100.0,
+      "rotation_score": 100,
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is within the reported EcoCrop optimal range 5–7.",
+        "За відомою історією інтервал після 2025 року: 2 р. (мінімум за правилом: 2 р.)."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ],
+      "rule_source": ""
+    },
+    {
+      "crop": "Pea",
+      "status": "allowed",
+      "score": 100.0,
+      "environment_score": 100.0,
+      "temperature_score": 100.0,
+      "soil_ph_score": 100.0,
+      "rotation_score": 100,
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is within the reported EcoCrop optimal range 5.5–7.",
+        "У наданій історії за достатній для цього правила період культуру Pea не вказано."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ],
+      "rule_source": ""
+    },
+    {
+      "crop": "Wheat",
+      "status": "allowed",
+      "score": 100.0,
+      "environment_score": 100.0,
+      "temperature_score": 100.0,
+      "soil_ph_score": 100.0,
+      "rotation_score": 100,
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is within the reported EcoCrop optimal range 6–7.",
+        "За відомою історією інтервал після 2024 року: 3 р. (мінімум за правилом: 2 р.)."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ],
+      "rule_source": ""
+    },
+    {
+      "crop": "Soybean",
+      "status": "allowed",
+      "score": 98.75,
+      "environment_score": 98.75,
+      "temperature_score": 100.0,
+      "soil_ph_score": 97.5,
+      "rotation_score": 100,
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is 0.1 pH units outside the reported EcoCrop optimum 5.5–6.5.",
+        "У наданій історії за достатній для цього правила період культуру Soybean не вказано."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ],
+      "rule_source": ""
+    },
+    {
+      "crop": "Barley",
+      "status": "allowed",
+      "score": 95.81,
+      "environment_score": 95.81,
+      "temperature_score": 91.63,
+      "soil_ph_score": 100.0,
+      "rotation_score": 100,
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 91.63/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is within the reported EcoCrop optimal range 6.5–7.5.",
+        "У наданій історії за достатній для цього правила період культуру Barley не вказано."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ],
+      "rule_source": ""
+    },
+    {
+      "crop": "Sunflower",
+      "status": "blocked",
+      "score": null,
+      "environment_score": 100.0,
+      "temperature_score": 100.0,
+      "soil_ph_score": 100.0,
+      "rotation_score": 0,
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is within the reported EcoCrop optimal range 6–7.5."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation.",
+        "Останній посів Sunflower: 2026. Минуло 1 р.; задане правило вимагає 7 р."
+      ],
+      "rule_source": ""
+    }
+  ],
+  "limitations": [
+    "Checks only simplified crop-specific return intervals from CSV.",
+    "Missing rules are unverified; incomplete history is provisionally allowed with a warning.",
+    "Final score equals temperature+pH score for allowed crops; rotation is an eligibility check.",
+    "Climate screening is temperature-only and soil screening is pH-only.",
+    "Rankings are not validated agronomic recommendations."
+  ]
+}

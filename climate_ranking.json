@@ -1,0 +1,276 @@
+{
+  "location": {
+    "latitude": 50.45,
+    "longitude": 30.52
+  },
+  "period": "months 5-9, historical years 2020-2025",
+  "season_statistics": [
+    {
+      "year": 2020,
+      "temperature_c": 18.754,
+      "precipitation_mm": 310.89
+    },
+    {
+      "year": 2021,
+      "temperature_c": 18.284,
+      "precipitation_mm": 376.01
+    },
+    {
+      "year": 2022,
+      "temperature_c": 17.802,
+      "precipitation_mm": 313.99
+    },
+    {
+      "year": 2023,
+      "temperature_c": 18.584,
+      "precipitation_mm": 256.12
+    },
+    {
+      "year": 2024,
+      "temperature_c": 19.961,
+      "precipitation_mm": 218.07
+    },
+    {
+      "year": 2025,
+      "temperature_c": 17.922,
+      "precipitation_mm": 332.04
+    }
+  ],
+  "ranking": [
+    {
+      "crop": "Barley",
+      "temperature_score": 100.0,
+      "status": "temperature_screening_only",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 17.8 to 20.0 °C"
+      ],
+      "warnings": [
+        "No soil, precipitation suitability, crop rotation, irrigation, or future weather included."
+      ],
+      "yearly_temperature_scores": [
+        {
+          "year": 2020,
+          "score": 100.0
+        },
+        {
+          "year": 2021,
+          "score": 100.0
+        },
+        {
+          "year": 2022,
+          "score": 100.0
+        },
+        {
+          "year": 2023,
+          "score": 100.0
+        },
+        {
+          "year": 2024,
+          "score": 100.0
+        },
+        {
+          "year": 2025,
+          "score": 100.0
+        }
+      ]
+    },
+    {
+      "crop": "Pea",
+      "temperature_score": 100.0,
+      "status": "temperature_screening_only",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 17.8 to 20.0 °C"
+      ],
+      "warnings": [
+        "No soil, precipitation suitability, crop rotation, irrigation, or future weather included."
+      ],
+      "yearly_temperature_scores": [
+        {
+          "year": 2020,
+          "score": 100.0
+        },
+        {
+          "year": 2021,
+          "score": 100.0
+        },
+        {
+          "year": 2022,
+          "score": 100.0
+        },
+        {
+          "year": 2023,
+          "score": 100.0
+        },
+        {
+          "year": 2024,
+          "score": 100.0
+        },
+        {
+          "year": 2025,
+          "score": 100.0
+        }
+      ]
+    },
+    {
+      "crop": "Sunflower",
+      "temperature_score": 100.0,
+      "status": "temperature_screening_only",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 17.8 to 20.0 °C"
+      ],
+      "warnings": [
+        "No soil, precipitation suitability, crop rotation, irrigation, or future weather included."
+      ],
+      "yearly_temperature_scores": [
+        {
+          "year": 2020,
+          "score": 100.0
+        },
+        {
+          "year": 2021,
+          "score": 100.0
+        },
+        {
+          "year": 2022,
+          "score": 100.0
+        },
+        {
+          "year": 2023,
+          "score": 100.0
+        },
+        {
+          "year": 2024,
+          "score": 100.0
+        },
+        {
+          "year": 2025,
+          "score": 100.0
+        }
+      ]
+    },
+    {
+      "crop": "Wheat",
+      "temperature_score": 100.0,
+      "status": "temperature_screening_only",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 17.8 to 20.0 °C"
+      ],
+      "warnings": [
+        "No soil, precipitation suitability, crop rotation, irrigation, or future weather included."
+      ],
+      "yearly_temperature_scores": [
+        {
+          "year": 2020,
+          "score": 100.0
+        },
+        {
+          "year": 2021,
+          "score": 100.0
+        },
+        {
+          "year": 2022,
+          "score": 100.0
+        },
+        {
+          "year": 2023,
+          "score": 100.0
+        },
+        {
+          "year": 2024,
+          "score": 100.0
+        },
+        {
+          "year": 2025,
+          "score": 100.0
+        }
+      ]
+    },
+    {
+      "crop": "Maize",
+      "temperature_score": 99.42,
+      "status": "temperature_screening_only",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 99.42/100",
+        "Observed mean temperatures ranged from 17.8 to 20.0 °C"
+      ],
+      "warnings": [
+        "No soil, precipitation suitability, crop rotation, irrigation, or future weather included."
+      ],
+      "yearly_temperature_scores": [
+        {
+          "year": 2020,
+          "score": 100.0
+        },
+        {
+          "year": 2021,
+          "score": 100.0
+        },
+        {
+          "year": 2022,
+          "score": 97.52
+        },
+        {
+          "year": 2023,
+          "score": 100.0
+        },
+        {
+          "year": 2024,
+          "score": 100.0
+        },
+        {
+          "year": 2025,
+          "score": 99.03
+        }
+      ]
+    },
+    {
+      "crop": "Soybean",
+      "temperature_score": 85.51,
+      "status": "temperature_screening_only",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 85.51/100",
+        "Observed mean temperatures ranged from 17.8 to 20.0 °C"
+      ],
+      "warnings": [
+        "No soil, precipitation suitability, crop rotation, irrigation, or future weather included."
+      ],
+      "yearly_temperature_scores": [
+        {
+          "year": 2020,
+          "score": 87.54
+        },
+        {
+          "year": 2021,
+          "score": 82.84
+        },
+        {
+          "year": 2022,
+          "score": 78.02
+        },
+        {
+          "year": 2023,
+          "score": 85.84
+        },
+        {
+          "year": 2024,
+          "score": 99.61
+        },
+        {
+          "year": 2025,
+          "score": 79.22
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Rank is ONLY a retrospective temperature screening, not a planting recommendation.",
+    "EcoCrop optimum temperature is compared to the chosen common seasonal mean as a prototype heuristic.",
+    "Crop calendars and winter crops can differ; the selected months may be inappropriate for some crops.",
+    "Rainfall is reported but NOT scored: EcoCrop rainfall bounds are annual.",
+    "NASA POWER grid estimates are not measurements on the field."
+  ]
+}

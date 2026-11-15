@@ -1,0 +1,132 @@
+{
+  "source": "https://digital-atlas.s3.amazonaws.com/cdh/data/ecocrop/ecocrop.parquet",
+  "total_crops": 26,
+  "added": [
+    {
+      "scientificname": "Solanum tuberosum",
+      "crop": "Potato",
+      "family": "Solanaceae"
+    },
+    {
+      "scientificname": "Lycopersicon esculentum",
+      "crop": "Tomato",
+      "family": "Solanaceae"
+    },
+    {
+      "scientificname": "Coffea arabica",
+      "crop": "Coffee",
+      "family": "Rubiaceae"
+    },
+    {
+      "scientificname": "Theobroma cacao",
+      "crop": "Cocoa",
+      "family": "Sterculiaceae"
+    },
+    {
+      "scientificname": "Gossypium hirsutum",
+      "crop": "Cotton",
+      "family": "Malvaceae"
+    },
+    {
+      "scientificname": "Beta vulgaris",
+      "crop": "Sugar beet",
+      "family": "Chenopodiaceae"
+    },
+    {
+      "scientificname": "Allium cepa",
+      "crop": "Onion",
+      "family": "Alliaceae"
+    },
+    {
+      "scientificname": "Allium sativum",
+      "crop": "Garlic",
+      "family": "Alliaceae"
+    },
+    {
+      "scientificname": "Cucumis sativus",
+      "crop": "Cucumber",
+      "family": "Cucurbitaceae"
+    },
+    {
+      "scientificname": "Cucurbita pepo",
+      "crop": "Pumpkin",
+      "family": "Cucurbitaceae"
+    },
+    {
+      "scientificname": "Ipomoea batatas",
+      "crop": "Sweet potato",
+      "family": "Convolvulaceae"
+    },
+    {
+      "scientificname": "Musa acuminata",
+      "crop": "Banana",
+      "family": "Musaceae"
+    },
+    {
+      "scientificname": "Manihot esculenta",
+      "crop": "Cassava",
+      "family": "Euphorbiaceae"
+    },
+    {
+      "scientificname": "Linum usitatissimum",
+      "crop": "Flax",
+      "family": "Linaceae"
+    },
+    {
+      "scientificname": "Coffea canephora",
+      "crop": "Robusta coffee",
+      "family": "Rubiaceae"
+    },
+    {
+      "scientificname": "Ananas comosus",
+      "crop": "Pineapple",
+      "family": "Bromeliaceae"
+    },
+    {
+      "scientificname": "Citrus sinensis",
+      "crop": "Orange",
+      "family": "Rutaceae"
+    },
+    {
+      "scientificname": "Capsicum annuum",
+      "crop": "Bell pepper",
+      "family": "Solanaceae"
+    },
+    {
+      "scientificname": "Spinacia oleracea",
+      "crop": "Spinach",
+      "family": "Chenopodiaceae"
+    },
+    {
+      "scientificname": "Sesamum indicum",
+      "crop": "Sesame",
+      "family": "Pedaliaceae"
+    }
+  ],
+  "skipped": [
+    "Oryza sativa: botanical family unavailable/ambiguous",
+    "Solanum lycopersicum: exact name not present",
+    "Sorghum bicolor: botanical family unavailable/ambiguous",
+    "Pennisetum glaucum: botanical family unavailable/ambiguous",
+    "Cenchrus americanus: exact name not present",
+    "Avena sativa: botanical family unavailable/ambiguous",
+    "Secale cereale: botanical family unavailable/ambiguous",
+    "Brassica napus: botanical family unavailable/ambiguous",
+    "Brassica oleracea: exact name not present",
+    "Brassica juncea: botanical family unavailable/ambiguous",
+    "Cicer arietinum: botanical family unavailable/ambiguous",
+    "Lens culinaris: botanical family unavailable/ambiguous",
+    "Arachis hypogaea: botanical family unavailable/ambiguous",
+    "Daucus carota: botanical family unavailable/ambiguous",
+    "Phaseolus vulgaris: botanical family unavailable/ambiguous",
+    "Vigna unguiculata: botanical family unavailable/ambiguous",
+    "Medicago sativa: botanical family unavailable/ambiguous",
+    "Saccharum officinarum: botanical family unavailable/ambiguous",
+    "Raphanus sativus: botanical family unavailable/ambiguous",
+    "Lactuca sativa: exact name not present",
+    "Carthamus tinctorius: botanical family unavailable/ambiguous",
+    "Eleusine coracana: exact name not present"
+  ],
+  "backup": "G:\\Hackathon\\crop_backup_20261115_165214",
+  "note": "New return interval rules deliberately blank; crops need review until rules are supplied. ECOCROP thresholds are expert estimates, not validated planting advice."
+}

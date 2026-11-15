@@ -1,0 +1,147 @@
+{
+  "coordinates": {
+    "latitude": 50.45,
+    "longitude": 30.52
+  },
+  "historical_period": [
+    2020,
+    2025
+  ],
+  "annual_precipitation": [
+    {
+      "year": 2020,
+      "annual_precipitation_mm": 613.4,
+      "status": "complete",
+      "missing_days": 0
+    },
+    {
+      "year": 2021,
+      "annual_precipitation_mm": 679.81,
+      "status": "complete",
+      "missing_days": 0
+    },
+    {
+      "year": 2022,
+      "annual_precipitation_mm": 697.48,
+      "status": "complete",
+      "missing_days": 0
+    },
+    {
+      "year": 2023,
+      "annual_precipitation_mm": 735.41,
+      "status": "complete",
+      "missing_days": 0
+    },
+    {
+      "year": 2024,
+      "annual_precipitation_mm": 656.3,
+      "status": "complete",
+      "missing_days": 0
+    },
+    {
+      "year": 2025,
+      "annual_precipitation_mm": 621.91,
+      "status": "complete",
+      "missing_days": 0
+    }
+  ],
+  "crop_comparisons": [
+    {
+      "crop": "Barley",
+      "status": "historical_comparison",
+      "ecocrop_optimal_annual_rainfall_mm": [
+        500.0,
+        1000.0
+      ],
+      "years_in_range": 6,
+      "complete_years": 6,
+      "years_below": 0,
+      "years_above": 0,
+      "reasons": [
+        "6/6 complete historical years within the ECOCROP optimum annual rainfall interval 500–1000 mm; 0 below and 0 above"
+      ]
+    },
+    {
+      "crop": "Maize",
+      "status": "historical_comparison",
+      "ecocrop_optimal_annual_rainfall_mm": [
+        600.0,
+        1200.0
+      ],
+      "years_in_range": 6,
+      "complete_years": 6,
+      "years_below": 0,
+      "years_above": 0,
+      "reasons": [
+        "6/6 complete historical years within the ECOCROP optimum annual rainfall interval 600–1200 mm; 0 below and 0 above"
+      ]
+    },
+    {
+      "crop": "Pea",
+      "status": "historical_comparison",
+      "ecocrop_optimal_annual_rainfall_mm": [
+        800.0,
+        1200.0
+      ],
+      "years_in_range": 0,
+      "complete_years": 6,
+      "years_below": 6,
+      "years_above": 0,
+      "reasons": [
+        "0/6 complete historical years within the ECOCROP optimum annual rainfall interval 800–1200 mm; 6 below and 0 above"
+      ]
+    },
+    {
+      "crop": "Soybean",
+      "status": "historical_comparison",
+      "ecocrop_optimal_annual_rainfall_mm": [
+        600.0,
+        1500.0
+      ],
+      "years_in_range": 6,
+      "complete_years": 6,
+      "years_below": 0,
+      "years_above": 0,
+      "reasons": [
+        "6/6 complete historical years within the ECOCROP optimum annual rainfall interval 600–1500 mm; 0 below and 0 above"
+      ]
+    },
+    {
+      "crop": "Sunflower",
+      "status": "historical_comparison",
+      "ecocrop_optimal_annual_rainfall_mm": [
+        600.0,
+        1000.0
+      ],
+      "years_in_range": 6,
+      "complete_years": 6,
+      "years_below": 0,
+      "years_above": 0,
+      "reasons": [
+        "6/6 complete historical years within the ECOCROP optimum annual rainfall interval 600–1000 mm; 0 below and 0 above"
+      ]
+    },
+    {
+      "crop": "Wheat",
+      "status": "historical_comparison",
+      "ecocrop_optimal_annual_rainfall_mm": [
+        750.0,
+        900.0
+      ],
+      "years_in_range": 0,
+      "complete_years": 6,
+      "years_below": 6,
+      "years_above": 0,
+      "reasons": [
+        "0/6 complete historical years within the ECOCROP optimum annual rainfall interval 750–900 mm; 6 below and 0 above"
+      ]
+    }
+  ],
+  "limitations": [
+    "This is NOT a crop-specific water requirement or rain suitability score.",
+    "Annual ECOCROP optimum rainfall ranges are compared only with annual NASA POWER rainfall totals.",
+    "No growing season, soil water storage, irrigation, rainfall timing, or forecast for the target year is considered.",
+    "NASA POWER values are gridded estimates, not on-field rain gauge readings.",
+    "This script does not alter the existing crop ranking."
+  ]
+}

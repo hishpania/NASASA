@@ -1,0 +1,149 @@
+{
+  "coordinates": {
+    "latitude": 42.03,
+    "longitude": -93.62
+  },
+  "soil_ph": 6.6,
+  "soil_ph_source": "ISRIC SoilGrids WebDAV cached 5-km GeoTIFF (0-5 cm)",
+  "period": "months 5-9; 2020-2025",
+  "temperature_weight": 0.5,
+  "soil_ph_weight": 0.5,
+  "season_statistics": [
+    {
+      "year": 2020,
+      "temperature_c": 20.873,
+      "precipitation_mm": 386.17
+    },
+    {
+      "year": 2021,
+      "temperature_c": 22.377,
+      "precipitation_mm": 364.21
+    },
+    {
+      "year": 2022,
+      "temperature_c": 21.834,
+      "precipitation_mm": 401.12
+    },
+    {
+      "year": 2023,
+      "temperature_c": 22.296,
+      "precipitation_mm": 333.28
+    },
+    {
+      "year": 2024,
+      "temperature_c": 21.62,
+      "precipitation_mm": 538.07
+    },
+    {
+      "year": 2025,
+      "temperature_c": 21.049,
+      "precipitation_mm": 621.77
+    }
+  ],
+  "ranking": [
+    {
+      "crop": "Maize",
+      "score": 100.0,
+      "temperature_score": 100.0,
+      "soil_ph_score": 100.0,
+      "status": "preliminary_screening",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is within the reported EcoCrop optimal range 5–7."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ]
+    },
+    {
+      "crop": "Pea",
+      "score": 100.0,
+      "temperature_score": 100.0,
+      "soil_ph_score": 100.0,
+      "status": "preliminary_screening",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is within the reported EcoCrop optimal range 5.5–7."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ]
+    },
+    {
+      "crop": "Sunflower",
+      "score": 100.0,
+      "temperature_score": 100.0,
+      "soil_ph_score": 100.0,
+      "status": "preliminary_screening",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is within the reported EcoCrop optimal range 6–7.5."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ]
+    },
+    {
+      "crop": "Wheat",
+      "score": 100.0,
+      "temperature_score": 100.0,
+      "soil_ph_score": 100.0,
+      "status": "preliminary_screening",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is within the reported EcoCrop optimal range 6–7."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ]
+    },
+    {
+      "crop": "Soybean",
+      "score": 98.75,
+      "temperature_score": 100.0,
+      "soil_ph_score": 97.5,
+      "status": "preliminary_screening",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 100.00/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is 0.1 pH units outside the reported EcoCrop optimum 5.5–6.5."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ]
+    },
+    {
+      "crop": "Barley",
+      "score": 95.81,
+      "temperature_score": 91.63,
+      "soil_ph_score": 100.0,
+      "status": "preliminary_screening",
+      "reasons": [
+        "Temperature score averaged across 6 seasons: 91.63/100",
+        "Observed mean temperatures ranged from 20.9 to 22.4 °C",
+        "pH 6.6 is within the reported EcoCrop optimal range 6.5–7.5."
+      ],
+      "warnings": [
+        "Only historical mean seasonal temperature and soil pH are scored; precipitation suitability, texture, irrigation and future weather are not scored.",
+        "Soil pH suitability is heuristic; no field-specific yield validation."
+      ]
+    }
+  ],
+  "limitations": [
+    "Preliminary ranking only; not a recommendation of what to plant.",
+    "Temperature scoring uses one user-defined calendar period for all crops.",
+    "Soil pH is supplied by user or predicted by SoilGrids; suitability penalty is heuristic.",
+    "NASA POWER estimates represent a coarse climate grid, not measurements at this field.",
+    "Rainfall, water supply, management, crop rotation history, crop calendars and future forecasts are not scored.",
+    "Weights are arbitrary defaults and require calibration or expert justification."
+  ]
+}

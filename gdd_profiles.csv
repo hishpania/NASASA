@@ -1,0 +1,18 @@
+crop,base_temperature_f,source,notes
+Bell pepper,50,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Cassava,,,No documented Tbase in reference; do not assume
+Cucumber,55,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Maize,50,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Pumpkin,45,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Sesame,,,No documented Tbase in reference; do not assume
+Sunflower,45,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Sweet potato,60,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Tomato,50,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Soybean,50,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Cotton,,,No documented Tbase in reference; do not assume
+Potato,40,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Wheat,40,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Barley,40,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Pea,40,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Onion,35,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold
+Flax,40,https://mrcc.purdue.edu/VIP/cropspecs,Reference Tbase only; NO validated maturity GDD threshold

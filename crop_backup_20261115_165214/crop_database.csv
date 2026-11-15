@@ -1,0 +1,7 @@
+﻿scientificname,crop,topmn,topmx,tmin,tmax,ropmn,ropmx,phopmn,phopmx,gmin,gmax
+Hordeum vulgare,Barley,15,20,2,40,500,1000,6.5,7.5,90,240
+Zea mays,Maize,18,33,10,47,600,1200,5.0,7.0,65,365
+Pisum sativum,Pea,10,24,4,30,800,1200,5.5,7.0,60,140
+Glycine max,Soybean,20,33,10,38,600,1500,5.5,6.5,75,180
+Helianthus annuus,Sunflower,17,34,5,45,600,1000,6.0,7.5,70,200
+Triticum aestivum,Wheat,15,23,5,27,750,900,6.0,7.0,90,250
