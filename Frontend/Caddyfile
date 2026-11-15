@@ -1,0 +1,18 @@
+# SITE_ADDRESS is ":80" to answer on the bare IP over HTTP, or a host name
+# (e.g. 104-197-221-155.sslip.io) to get a Let's Encrypt certificate automatically.
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy webapi:8080
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+}

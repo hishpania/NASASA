@@ -10,15 +10,10 @@ builder.AddWebServices();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    await app.InitialiseDatabaseAsync();
-}
-else
-{
-    app.UseHsts();
-    app.UseHttpsRedirection();
-}
+// Migrations run on every start; the demo account is seeded in development only.
+await app.InitialiseDatabaseAsync(seed: app.Environment.IsDevelopment());
+
+// In production TLS ends at the reverse proxy (Caddy), which also redirects HTTP to HTTPS.
 
 app.UseCors(static cors => cors
     .AllowAnyMethod()
