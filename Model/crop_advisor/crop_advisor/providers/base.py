@@ -36,7 +36,7 @@ class OutOfCoverage(Exception):
 class AdviceRequest:
     latitude: float
     longitude: float
-    # What the user says grew here, most recent season first. Overrides observed history.
+    # What the user says grew here, most recent season first, ahead of observed history.
     previous_crops: tuple[str, ...] = ()
     irrigated: bool = False
 

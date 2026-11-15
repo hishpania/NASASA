@@ -49,7 +49,7 @@ class UsModelProvider:
         )
         soil = soil or await self._sources.soil_estimate(*point)
         observed = [Season(land_use, year) for year, land_use in zip(years, land_uses) if land_use]
-        history = reported_history(request) or observed
+        history = [*reported_history(request), *observed]
         if not history:
             raise OutOfCoverage("the Cropland Data Layer has no crop history here")
         past = [season.land_use for season in history]
@@ -80,9 +80,9 @@ class UsModelProvider:
             ))
 
         gaps = [
-            f"Crop history comes from satellite classification at the field center and ends in {cdl.LATEST_YEAR}; "
+            f"Crop history comes from satellite classification at the field center and ends in {observed[0].year}; "
             "tell the tool what grew last season if it differs."
-        ] if history is observed else []
+        ] if observed and not request.previous_crops else []
         if past[0] == OTHER_CROP:
             gaps.append("The latest crop on this field is outside the catalog, so rotation effects are approximate.")
         if soil is None:

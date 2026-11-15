@@ -4,12 +4,13 @@ import { CropIcon } from './CropIcon'
 
 type LastSeasonPromptProps = {
   fieldName: string
+  newestSeen: number | null
   landUses: readonly LandUse[]
   onAnswer: (crop: string | null) => void
 }
 
 /** Asked when satellites cannot tell what grew on the field: the rotation advice depends on it. */
-export function LastSeasonPrompt({ fieldName, landUses, onAnswer }: LastSeasonPromptProps) {
+export function LastSeasonPrompt({ fieldName, newestSeen, landUses, onAnswer }: LastSeasonPromptProps) {
   return (
     <motion.section
       initial={{ opacity: 0, y: -8 }}
@@ -21,7 +22,10 @@ export function LastSeasonPrompt({ fieldName, landUses, onAnswer }: LastSeasonPr
           Last season’s crop on {fieldName}
         </h2>
         <p className="text-sm/6 text-zinc-600 dark:text-zinc-400">
-          No satellite crop record for this location. Add the previous crop for rotation-aware recommendations.
+          {newestSeen === null
+            ? 'No satellite crop record for this location.'
+            : `Satellite crop records for this location end in ${newestSeen}.`}{' '}
+          Add the previous crop for rotation-aware recommendations.
         </p>
       </div>
       <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9">
