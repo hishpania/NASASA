@@ -11,8 +11,8 @@ export type LabelCandidate = {
 type Rect = { left: number; top: number; right: number; bottom: number }
 
 export const LABEL_SIZES: Record<LabelVariant, { width: number; height: number }> = {
-  full: { width: 320, height: 116 },
-  compact: { width: 170, height: 36 },
+  full: { width: 200, height: 64 },
+  compact: { width: 160, height: 36 },
 }
 
 const GAP = 8

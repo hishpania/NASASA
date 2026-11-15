@@ -2,8 +2,9 @@ import clsx from 'clsx'
 import { NavLink } from 'react-router'
 
 const LINKS = [
-  { to: '/', label: 'Fields' },
-  { to: '/nasa', label: 'NASA data' },
+  { to: '/', label: 'My fields' },
+  { to: '/nasa', label: 'Climate' },
+  { to: '/advice', label: 'Recommendations' },
 ] as const
 
 export function AppNav() {

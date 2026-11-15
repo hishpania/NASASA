@@ -32,7 +32,8 @@ export function LocationSearch({ near, onSelect }: LocationSearchProps) {
         onChange={handleChange}
         onQueryChange={setQuery}
         displayValue={(place) => place?.name}
-                aria-label="Find a place"
+        placeholder="Town, region or address"
+        aria-label="Find a place"
       >
         {(place) => (
           <ComboboxOption value={place}>

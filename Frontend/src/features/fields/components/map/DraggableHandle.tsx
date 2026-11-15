@@ -13,8 +13,8 @@ type DraggableHandleProps = {
 }
 
 function readPosition(target: unknown): LatLng {
-  const { lat, lng } = (target as LeafletMarker).getLatLng()
-  return { lat, lng }
+  const wrapped = (target as LeafletMarker).getLatLng().wrap()
+  return { lat: wrapped.lat, lng: wrapped.lng }
 }
 
 export function DraggableHandle({ position, icon, title, onMove, onDrop, onClick, onContextMenu }: DraggableHandleProps) {

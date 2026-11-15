@@ -11,7 +11,8 @@ export function MapInteraction({ isPlacing, onPlace }: MapInteractionProps) {
   const map = useMapEvents({
     click: ({ latlng }) => {
       if (isPlacing) {
-        onPlace({ lat: latlng.lat, lng: latlng.lng })
+        const wrapped = latlng.wrap()
+        onPlace({ lat: wrapped.lat, lng: wrapped.lng })
       }
     },
   })

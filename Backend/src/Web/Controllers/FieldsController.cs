@@ -6,6 +6,8 @@ using Neosphere.Application.Fields.Commands.DeleteField;
 using Neosphere.Application.Fields.Commands.UpdateField;
 using Neosphere.Application.Fields.Models;
 using Neosphere.Application.Fields.Queries.GetFields;
+using Neosphere.Application.Recommendations.Models;
+using Neosphere.Application.Recommendations.Queries.GetFieldRecommendations;
 
 namespace Neosphere.Web.Controllers;
 
@@ -21,6 +23,21 @@ public sealed class FieldsController(ISender sender) : ControllerBase
     [ProducesResponseType<IReadOnlyList<FieldDto>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<FieldDto>>> GetFields(CancellationToken cancellationToken) =>
         Ok(await sender.Send(new GetFieldsQuery(), cancellationToken));
+
+    [HttpGet("{id:int}/recommendations")]
+    [EndpointSummary("Recommend crops and rotations")]
+    [EndpointDescription(
+        "Returns sowing recommendations and rotation strategies for a field owned by the current user. " +
+        "Fields in the contiguous United States are answered by the crop rotation model, the rest of the world by agro-climatic rules.")]
+    [ProducesResponseType<CropAdviceDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<CropAdviceDto>> GetRecommendations(
+        int id,
+        [FromQuery] string[]? previousCrops,
+        [FromQuery] bool irrigated = false,
+        CancellationToken cancellationToken = default) =>
+        Ok(await sender.Send(new GetFieldRecommendationsQuery(id, previousCrops ?? [], irrigated), cancellationToken));
 
     [HttpPost]
     [EndpointSummary("Create field")]

@@ -1,5 +1,6 @@
 import { AuthProvider, useAuth } from '@/features/auth'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { AdvicePage } from '@/pages/AdvicePage'
 import { FieldsPage } from '@/pages/FieldsPage'
 import { NasaDataPage } from '@/pages/NasaDataPage'
 import { SignInPage } from '@/pages/SignInPage'
@@ -11,6 +12,7 @@ const router = createBrowserRouter([
     children: [
       { path: '/', element: <FieldsPage /> },
       { path: '/nasa', element: <NasaDataPage /> },
+      { path: '/advice', element: <AdvicePage /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
