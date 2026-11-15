@@ -197,6 +197,8 @@ type AdviceContentProps = {
 
 function AdviceContent({ advice, priority, onPriorityChange, strategies, emphasized }: AdviceContentProps) {
   const { climate, history, provider } = advice
+  const newest = history[0]?.year
+  const firstYear = (newest ?? new Date().getFullYear()) + 1
 
   return (
     <>
@@ -289,7 +291,13 @@ function AdviceContent({ advice, priority, onPriorityChange, strategies, emphasi
         </div>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {strategies.map((strategy) => (
-            <StrategyCard key={strategy.id} strategy={strategy} emphasized={emphasized} />
+            <StrategyCard
+              key={strategy.id}
+              strategy={strategy}
+              emphasized={emphasized}
+              firstYear={firstYear}
+              past={strategy.isCurrent ? history.slice(0, 2).reverse() : []}
+            />
           ))}
         </div>
       </section>
