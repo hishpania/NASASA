@@ -16,6 +16,17 @@ export type ForecastSkill = {
   method: ForecastMethod
 }
 
+export type ForecastSeason = {
+  start: string
+  end: string
+  below: number
+  near: number
+  above: number
+  lower: number
+  upper: number
+  method: ForecastMethod
+}
+
 export type ForecastSeriesId = 'temperature' | 'precipitation' | 'soil_wetness'
 
 export type ForecastSeries = {
@@ -25,6 +36,7 @@ export type ForecastSeries = {
   history: ForecastPoint[]
   forecast: ForecastPoint[]
   skill: ForecastSkill[]
+  season: ForecastSeason
 }
 
 export type ClimateForecast = {
@@ -33,25 +45,4 @@ export type ClimateForecast = {
   lastObserved: string
   source: string
   series: ForecastSeries[]
-}
-
-export type OutlookSummary = {
-  months: number
-  forecast: number
-  normal: number
-  modelMonths: number
-}
-
-export function summarizeOutlook(series: ForecastSeries, months: number, total: boolean): OutlookSummary {
-  const window = series.forecast.slice(0, months)
-  const combine = (values: number[]) => {
-    const sum = values.reduce((acc, value) => acc + value, 0)
-    return total ? sum : sum / values.length
-  }
-  return {
-    months: window.length,
-    forecast: combine(window.map((point) => point.value)),
-    normal: combine(window.map((point) => point.normal)),
-    modelMonths: series.skill.filter((entry) => entry.method === 'model').length,
-  }
 }

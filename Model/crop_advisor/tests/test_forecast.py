@@ -1,6 +1,7 @@
 import math
 import random
 import unittest
+from datetime import date
 
 from crop_advisor import forecast
 from crop_advisor.sources import power_monthly
@@ -42,7 +43,7 @@ class MonthlySeriesTests(unittest.TestCase):
 
 class ForecastTests(unittest.TestCase):
     def setUp(self):
-        self.result = forecast.build(power_monthly.parse(monthly_payload()))
+        self.result = forecast.build(power_monthly.parse(monthly_payload()), today=date(2026, 10, 5))
 
     def test_continues_after_the_last_observed_month(self):
         self.assertEqual(self.result.last_observed, "2026-09")
@@ -50,6 +51,20 @@ class ForecastTests(unittest.TestCase):
         self.assertEqual(temperature.history[-1].month, "2026-09")
         self.assertEqual(temperature.forecast[0].month, "2026-10")
         self.assertEqual(len(temperature.forecast), forecast.HORIZON)
+
+    def test_season_probabilities_add_up_and_order_the_terciles(self):
+        for outlook in self.result.outlooks:
+            season = outlook.season
+            self.assertEqual(season.start, "2026-10")
+            self.assertEqual(season.end, "2026-12")
+            self.assertEqual(season.below + season.near + season.above, 100)
+            self.assertTrue(all(share >= 0 for share in (season.below, season.near, season.above)))
+            self.assertLessEqual(season.lower, season.upper)
+
+    def test_season_starts_at_the_current_month_when_data_lags(self):
+        result = forecast.build(power_monthly.parse(monthly_payload()), today=date(2026, 11, 15))
+        self.assertEqual(result.outlooks[0].season.start, "2026-11")
+        self.assertEqual(result.outlooks[0].season.end, "2027-01")
 
     def test_band_contains_the_forecast_and_respects_limits(self):
         for outlook in self.result.outlooks:

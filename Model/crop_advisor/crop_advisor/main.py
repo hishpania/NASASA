@@ -107,6 +107,7 @@ def _forecast_schema(forecast: Forecast) -> schemas.Forecast:
                 history=[schemas.ForecastPoint(**vars(point)) for point in outlook.history],
                 forecast=[schemas.ForecastPoint(**vars(point)) for point in outlook.forecast],
                 skill=[schemas.ForecastSkill(**vars(skill)) for skill in outlook.skill],
+                season=schemas.ForecastSeason(**vars(outlook.season)),
             )
             for outlook in forecast.outlooks
         ],
