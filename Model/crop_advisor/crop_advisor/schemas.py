@@ -129,6 +129,17 @@ class ForecastSkill(Schema):
     method: str
 
 
+class ForecastSeason(Schema):
+    start: str
+    end: str
+    below: int
+    near: int
+    above: int
+    lower: float
+    upper: float
+    method: str
+
+
 class ForecastSeries(Schema):
     id: str
     name: str
@@ -136,6 +147,7 @@ class ForecastSeries(Schema):
     history: list[ForecastPoint]
     forecast: list[ForecastPoint]
     skill: list[ForecastSkill]
+    season: ForecastSeason
 
 
 class Forecast(Schema):

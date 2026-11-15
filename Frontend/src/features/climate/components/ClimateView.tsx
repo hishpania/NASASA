@@ -7,9 +7,10 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { useClimateData } from '../hooks/useClimateData'
 import { useFieldForecast } from '../hooks/useFieldForecast'
 import { summarize, type ClimateDay } from '../model/climate'
-import { summarizeOutlook, type ClimateForecast, type ForecastSeries, type ForecastSeriesId } from '../model/forecast'
+import type { ClimateForecast, ForecastSeriesId } from '../model/forecast'
 import { buildTimeline } from '../model/timeline'
 import { NoFieldState } from '@/components/ui/NoFieldState'
+import { SeasonOutlook } from './SeasonOutlook'
 import { SegmentedControl } from './SegmentedControl'
 import { TimelineChart } from './TimelineChart'
 
@@ -20,9 +21,6 @@ const PERIODS = [
 ] as const
 
 type Period = (typeof PERIODS)[number]['value']
-
-const FORECAST_MONTHS: Record<Period, number> = { 30: 3, 90: 6, 180: 12 }
-const OUTLOOK_MONTHS = 3
 
 const OUTLOOK_TITLES: Record<ForecastSeriesId, string> = {
   temperature: 'Temperature',
@@ -42,76 +40,22 @@ function Placeholder({ children }: { children: ReactNode }) {
   )
 }
 
-function describeOutlook(series: ForecastSeries): { value: string; unit: string; hint: string } {
-  const total = series.id === 'precipitation'
-  const summary = summarizeOutlook(series, OUTLOOK_MONTHS, total)
-  if (series.id === 'temperature') {
-    const difference = summary.forecast - summary.normal
-    return {
-      value: summary.forecast.toFixed(1),
-      unit: '°C',
-      hint:
-        Math.abs(difference) < 0.15
-          ? 'Close to normal'
-          : `${Math.abs(difference).toFixed(1)} °C ${difference > 0 ? 'warmer' : 'cooler'} than normal`,
-    }
-  }
-  if (series.id === 'precipitation') {
-    const share = summary.normal > 0 ? (summary.forecast - summary.normal) / summary.normal : 0
-    return {
-      value: String(Math.round(summary.forecast)),
-      unit: 'mm',
-      hint:
-        Math.abs(share) < 0.03
-          ? 'Close to normal'
-          : `${Math.round(Math.abs(share) * 100)} % ${share > 0 ? 'wetter' : 'drier'} than normal`,
-    }
-  }
-  const difference = Math.round((summary.forecast - summary.normal) * 100)
-  return {
-    value: String(Math.round(summary.forecast * 100)),
-    unit: '%',
-    hint:
-      difference === 0
-        ? 'Close to normal'
-        : `${Math.abs(difference)} points ${difference > 0 ? 'wetter' : 'drier'} than normal`,
-  }
-}
-
-function OutlookTiles({ forecast }: { forecast: ClimateForecast }) {
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      {forecast.series.map((series) => {
-        const outlook = describeOutlook(series)
-        return (
-          <StatTile
-            key={series.id}
-            label={`${OUTLOOK_TITLES[series.id]}, next ${OUTLOOK_MONTHS} months`}
-            value={outlook.value}
-            unit={outlook.unit}
-            hint={outlook.hint}
-          />
-        )
-      })}
-    </div>
-  )
-}
-
 function SkillNote({ forecast }: { forecast: ClimateForecast }) {
-  const parts = forecast.series.map((series) => {
-    const modelMonths = series.skill.filter((entry) => entry.method === 'model').length
-    return `${OUTLOOK_TITLES[series.id].toLowerCase()} ${modelMonths} of ${series.skill.length}`
-  })
+  const skilled = forecast.series
+    .filter((series) => series.season.method === 'model')
+    .map((series) => OUTLOOK_TITLES[series.id].toLowerCase())
   return (
     <Text>
-      The forecast is checked month by month on the last two years of data. Where the model beat the 25-year normal,
-      its forecast is shown; elsewhere the normal is. Months answered by the model: {parts.join(', ')}.
+      The odds come from a model trained on 25 years of monthly NASA POWER data and checked on the last two years. It
+      only moves the odds away from an even third each where it beat the 25-year normal
+      {skilled.length > 0 ? `, which it did for ${skilled.join(', ')}` : ', which it did not do this time'}. Treat them
+      as a tilt, not a promise.
     </Text>
   )
 }
 
-function seriesOf(forecast: ClimateForecast | null, id: ForecastSeriesId): ForecastSeries | undefined {
-  return forecast?.series.find((series) => series.id === id)
+function normalsOf(forecast: ClimateForecast | null, id: ForecastSeriesId) {
+  return forecast?.series.find((series) => series.id === id)?.history
 }
 
 export function ClimateView() {
@@ -123,7 +67,6 @@ export function ClimateView() {
   const days = climate.status === 'loaded' ? climate.series.days : null
   const forecast = outlook.status === 'loaded' ? outlook.forecast : null
   const summary = days ? summarize(days) : null
-  const forecastMonths = FORECAST_MONTHS[period]
 
   const timelines = useMemo(() => {
     if (!days) {
@@ -134,24 +77,21 @@ export function ClimateView() {
       temperature: buildTimeline(days, {
         value: (day) => day.temperatureMean,
         range: (day) => day.temperatureRange,
-        forecast: seriesOf(forecast, 'temperature'),
-        forecastMonths,
+        normals: normalsOf(forecast, 'temperature'),
       }),
       precipitation: buildTimeline(days, {
         value: (day) => day.precipitation,
-        forecast: seriesOf(forecast, 'precipitation'),
-        forecastMonths,
+        normals: normalsOf(forecast, 'precipitation'),
         perDay: true,
       }),
       soilWetness: buildTimeline(days, {
         value: (day) => day.soilWetness,
-        forecast: seriesOf(forecast, 'soil_wetness'),
-        forecastMonths,
+        normals: normalsOf(forecast, 'soil_wetness'),
       }),
       solarRadiation: daily((day) => day.solarRadiation),
       humidity: daily((day) => day.humidity),
     }
-  }, [days, forecast, forecastMonths])
+  }, [days, forecast])
 
   if (status === 'loading') {
     return <Placeholder>Loading your fields…</Placeholder>
@@ -161,7 +101,7 @@ export function ClimateView() {
     return (
       <NoFieldState
         title="Add a field to see its climate"
-        description="Outline your field on the map and we will show its temperature, rain and soil moisture from NASA POWER, with a forecast for the months ahead."
+        description="Outline your field on the map and we will show its temperature, rain and soil moisture from NASA POWER, with the odds for the season ahead."
       />
     )
   }
@@ -170,8 +110,8 @@ export function ClimateView() {
     outlook.status === 'failed'
       ? ` The forecast is unavailable: ${outlook.message}`
       : outlook.status === 'loaded'
-        ? ` After the dashed line comes the forecast for the next ${forecastMonths} months.`
-        : ' The forecast is being trained on 25 years of monthly data…'
+        ? ' The dotted line on the charts is the 25-year normal.'
+        : ' The outlook is being trained on 25 years of monthly data…'
 
   return (
     <div className="space-y-6">
@@ -221,12 +161,12 @@ export function ClimateView() {
             />
           </div>
 
-          {forecast && <OutlookTiles forecast={forecast} />}
+          {forecast && <SeasonOutlook forecast={forecast} />}
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <ChartCard
               title="Air temperature"
-              description="Daily mean at 2 m with the daily min–max band, then the monthly forecast. The dotted line is the 25-year normal."
+              description="Daily mean at 2 m with the daily min–max band, against the 25-year normal."
               className="xl:col-span-2"
             >
               <TimelineChart
@@ -238,7 +178,7 @@ export function ClimateView() {
             </ChartCard>
             <ChartCard
               title="Precipitation"
-              description="Daily precipitation, bias-corrected, then the forecast as the average per day of each month."
+              description="Daily precipitation, bias-corrected. The dotted line is the normal per day of each month."
             >
               <TimelineChart
                 timeline={timelines.precipitation}
@@ -249,10 +189,7 @@ export function ClimateView() {
                 formatValue={(value) => `${value.toFixed(1)} mm/day`}
               />
             </ChartCard>
-            <ChartCard
-              title="Root zone soil wetness"
-              description="Share of soil pores filled with water, 0 to 100 %. Moisture carries over, so the first forecast months are the most reliable."
-            >
+            <ChartCard title="Root zone soil wetness" description="Share of soil pores filled with water, 0 to 100 %.">
               <TimelineChart
                 timeline={timelines.soilWetness}
                 name="Soil wetness"

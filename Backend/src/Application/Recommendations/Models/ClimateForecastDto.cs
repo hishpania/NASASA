@@ -13,7 +13,8 @@ public sealed record ForecastSeriesDto(
     string Unit,
     IReadOnlyList<ForecastPointDto> History,
     IReadOnlyList<ForecastPointDto> Forecast,
-    IReadOnlyList<ForecastSkillDto> Skill);
+    IReadOnlyList<ForecastSkillDto> Skill,
+    ForecastSeasonDto Season);
 
 public sealed record ForecastPointDto(
     string Month,
@@ -24,3 +25,13 @@ public sealed record ForecastPointDto(
     string? Method);
 
 public sealed record ForecastSkillDto(int Horizon, double ModelError, double NormalError, string Method);
+
+public sealed record ForecastSeasonDto(
+    string Start,
+    string End,
+    int Below,
+    int Near,
+    int Above,
+    double Lower,
+    double Upper,
+    string Method);

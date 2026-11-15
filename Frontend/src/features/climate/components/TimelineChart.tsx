@@ -1,16 +1,5 @@
 import { CHART_THEME, SERIES_COLORS } from '@/components/charts'
-import {
-  Area,
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Area, Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { TooltipContentProps, TooltipValueType } from 'recharts'
 import type { Timeline, TimelineRow } from '../model/timeline'
 
@@ -24,33 +13,33 @@ type TimelineChartProps = {
   formatTick?: (value: number) => string
 }
 
-const dayFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+const dayFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+})
 const monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 const tickFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' })
 
 function formatTickDate(time: number): string {
   const date = new Date(time)
-  return date.getUTCMonth() === 0 ? `${tickFormatter.format(date)} ’${String(date.getUTCFullYear()).slice(2)}` : tickFormatter.format(date)
+  return date.getUTCMonth() === 0
+    ? `${tickFormatter.format(date)} ’${String(date.getUTCFullYear()).slice(2)}`
+    : tickFormatter.format(date)
 }
 
-function makeTooltip(name: string, lastObserved: number | null, formatValue: (value: number) => string) {
+function makeTooltip(name: string, formatValue: (value: number) => string) {
   return function TimelineTooltip({ active, payload }: TooltipContentProps<TooltipValueType, string | number>) {
     const row = payload?.[0]?.payload as TimelineRow | undefined
     if (!active || !row) {
       return null
     }
-    const isForecast = lastObserved !== null && row.time > lastObserved
     const entries: { label: string; text: string }[] = []
-    if (!isForecast && row.observed !== null) {
+    if (row.observed !== null) {
       entries.push({ label: name, text: formatValue(row.observed) })
       if (row.range) {
         entries.push({ label: 'Min – max', text: `${formatValue(row.range[0])} – ${formatValue(row.range[1])}` })
-      }
-    }
-    if (isForecast && row.forecast !== null) {
-      entries.push({ label: 'Forecast', text: formatValue(row.forecast) })
-      if (row.band) {
-        entries.push({ label: 'Likely range', text: `${formatValue(row.band[0])} – ${formatValue(row.band[1])}` })
       }
     }
     if (row.normal !== null) {
@@ -64,7 +53,7 @@ function makeTooltip(name: string, lastObserved: number | null, formatValue: (va
     return (
       <div className="min-w-44 rounded-lg bg-white px-3 py-2 text-sm/6 shadow-lg ring-1 ring-zinc-950/10 dark:bg-zinc-800 dark:ring-white/10">
         <p className="font-medium text-zinc-950 dark:text-white">
-          {isForecast || row.observed === null ? monthFormatter.format(date) : dayFormatter.format(date)}
+          {row.observed === null ? monthFormatter.format(date) : dayFormatter.format(date)}
         </p>
         <ul>
           {entries.map((entry) => (
@@ -88,8 +77,7 @@ export function TimelineChart({
   formatValue,
   formatTick,
 }: TimelineChartProps) {
-  const { rows, lastObserved, ticks } = timeline
-  const hasForecast = rows.some((row) => row.forecast !== null)
+  const { rows, ticks } = timeline
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -116,30 +104,13 @@ export function TimelineChart({
         />
         <Tooltip
           cursor={{ stroke: CHART_THEME.axis, strokeDasharray: '3 3' }}
-          content={makeTooltip(name, lastObserved, formatValue)}
+          content={makeTooltip(name, formatValue)}
         />
-        {hasForecast && lastObserved !== null && (
-          <ReferenceLine
-            x={lastObserved}
-            stroke={CHART_THEME.axis}
-            strokeDasharray="4 4"
-            label={{ value: 'Forecast →', position: 'insideTopLeft', fill: CHART_THEME.axis, fontSize: 12 }}
-          />
-        )}
         <Area
           dataKey="range"
           stroke="none"
           fill={color}
           fillOpacity={0.2}
-          isAnimationActive={false}
-          activeDot={false}
-          connectNulls
-        />
-        <Area
-          dataKey="band"
-          stroke="none"
-          fill={color}
-          fillOpacity={0.15}
           isAnimationActive={false}
           activeDot={false}
           connectNulls
@@ -167,16 +138,6 @@ export function TimelineChart({
             connectNulls
           />
         )}
-        <Line
-          dataKey="forecast"
-          stroke={color}
-          strokeWidth={2}
-          strokeDasharray="6 4"
-          dot={{ r: 2.5, fill: color, strokeWidth: 0 }}
-          activeDot={{ r: 4, stroke: CHART_THEME.surface, strokeWidth: 2 }}
-          isAnimationActive={false}
-          connectNulls
-        />
       </ComposedChart>
     </ResponsiveContainer>
   )

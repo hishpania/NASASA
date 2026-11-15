@@ -1,7 +1,9 @@
 """Monthly outlook of a point: the observed months and a forecast for the year ahead."""
 
 import calendar
+import math
 from dataclasses import dataclass
+from datetime import date
 
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
@@ -15,6 +17,7 @@ LAGS = 3
 BAND_Z = 1.28
 MAE_TO_SIGMA = 1.25
 MIN_TRAINING_ROWS = 60
+SEASON_MONTHS = 3
 
 FOREST = dict(n_estimators=150, max_depth=6, min_samples_leaf=3, random_state=42, n_jobs=1)
 
@@ -55,11 +58,24 @@ class Skill:
 
 
 @dataclass(frozen=True)
+class Season:
+    start: str
+    end: str
+    below: int
+    near: int
+    above: int
+    lower: float
+    upper: float
+    method: str
+
+
+@dataclass(frozen=True)
 class Outlook:
     indicator: Indicator
     history: list[Point]
     forecast: list[Point]
     skill: list[Skill]
+    season: Season
 
 
 @dataclass(frozen=True)
@@ -112,7 +128,46 @@ def _clip(indicator: Indicator, value: float) -> float:
     return float(np.clip(value, low, high))
 
 
-def build(series: MonthlySeries) -> Forecast:
+def _cdf(value: float) -> float:
+    return 0.5 * (1 + math.erf(value / math.sqrt(2)))
+
+
+def _season_offset(last: Month, today: date) -> int:
+    ahead = (today.year * 12 + today.month) - (last[0] * 12 + last[1])
+    return int(np.clip(ahead - 1, 0, HORIZON - SEASON_MONTHS))
+
+
+def _season(indicator, anomalies, normals, calendar_months, months, predictions, skills) -> Season:
+    combine = np.sum if indicator.id == "precipitation" else np.mean
+    first = months[0][1]
+    starts = [p for p in range(len(calendar_months) - SEASON_MONTHS + 1) if calendar_months[p] == first]
+    past = np.array([combine(anomalies[p:p + SEASON_MONTHS]) for p in starts])
+    lower, upper = np.quantile(past, [1 / 3, 2 / 3])
+    window = skills
+    ratio = np.mean([min(entry.model_error, entry.normal_error) / entry.normal_error for entry in window])
+    spread = float(past.std(ddof=1)) * ratio
+    center = float(combine(predictions))
+    if spread > 0 and ratio < 1:
+        below = round(100 * _cdf((lower - center) / spread))
+        above = round(100 * (1 - _cdf((upper - center) / spread)))
+    else:
+        below = above = 33
+    method = "model" if any(entry.method == "model" for entry in window) else "normal"
+    normal = float(combine(np.array([normals[month - 1] for _, month in months])))
+    digits = 2 if indicator.id == "soil_wetness" else 1
+    return Season(
+        start=_label(months[0]),
+        end=_label(months[-1]),
+        below=below,
+        near=100 - below - above,
+        above=above,
+        lower=round(_clip(indicator, normal + lower), digits),
+        upper=round(_clip(indicator, normal + upper), digits),
+        method=method,
+    )
+
+
+def build(series: MonthlySeries, today: date | None = None) -> Forecast:
     count = len(series.months)
     calendar_months = np.array([month for _, month in series.months])
     values = np.vstack([_monthly_values(series, indicator) for indicator in INDICATORS])
@@ -151,6 +206,7 @@ def build(series: MonthlySeries) -> Forecast:
             )
             predictions[index, horizon - 1] = anomaly[index] if use_model else 0.0
 
+    offset = _season_offset(series.months[last], today or date.today())
     outlooks = []
     for index, indicator in enumerate(INDICATORS):
         digits = 2 if indicator.id == "soil_wetness" else 1
@@ -179,6 +235,15 @@ def build(series: MonthlySeries) -> Forecast:
                     method=entry.method,
                 )
             )
-        outlooks.append(Outlook(indicator, history, forecast, skill[indicator.id]))
+        season = _season(
+            indicator,
+            full_anomalies[index],
+            full_normals[index],
+            calendar_months,
+            [_shift(series.months[last], offset + step) for step in range(1, SEASON_MONTHS + 1)],
+            predictions[index, offset:offset + SEASON_MONTHS],
+            skill[indicator.id][offset:offset + SEASON_MONTHS],
+        )
+        outlooks.append(Outlook(indicator, history, forecast, skill[indicator.id], season))
 
     return Forecast(series.latitude, series.longitude, _label(series.months[last]), outlooks)
